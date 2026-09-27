@@ -1,10 +1,11 @@
 /**
  * penilaian-ui.js
  * Alur Input: Mapel → TP → Kompetensi → Nilai
- * Saat ini memakai mock data. Nanti diganti baca/tulis Firestore.
+ * Data siswa: data/siswa-5a.json
+ * TP/mapel masih mock — nanti diganti Firestore.
  */
 
-// ========== MOCK DATA (sementara) ==========
+// ========== MOCK MAPEL & TP (sementara) ==========
 const MOCK_MAPEL = [
   { id: "bi", nama: "Bahasa Indonesia", kode: "BI" },
   { id: "ipas", nama: "IPAS", kode: "IPAS" },
@@ -97,12 +98,36 @@ const MOCK_TP = {
   ],
 };
 
-// 25 siswa Kelas 5A (nama placeholder — diganti data asli nanti)
-const MOCK_SISWA = Array.from({ length: 25 }, (_, i) => ({
-  id: `s${i + 1}`,
-  nomorAbsen: i + 1,
-  nama: `Siswa ${String(i + 1).padStart(2, "0")}`,
-}));
+// Fallback jika fetch JSON gagal (file:// atau offline)
+const SISWA_FALLBACK = [
+  { id: "3153742941", nomorAbsen: 1, nisn: "3153742941", nama: "Abdurrahman Ar Ribery" },
+  { id: "3162659714", nomorAbsen: 2, nisn: "3162659714", nama: "Abyan Nandana Khalif" },
+  { id: "3150563992", nomorAbsen: 3, nisn: "3150563992", nama: "Adskhan Ibran Elfatih" },
+  { id: "3159409800", nomorAbsen: 4, nisn: "3159409800", nama: "Afiya Nur Ataya Sandi" },
+  { id: "3156365089", nomorAbsen: 5, nisn: "3156365089", nama: "Aisyah Afqohunnisa" },
+  { id: "3150790933", nomorAbsen: 6, nisn: "3150790933", nama: "Akhdan Ziyad" },
+  { id: "3161535657", nomorAbsen: 7, nisn: "3161535657", nama: "Alam Rayyan Fiyanto" },
+  { id: "0169932726", nomorAbsen: 8, nisn: "0169932726", nama: "Arsyila Almahyira Azgefa" },
+  { id: "3169474236", nomorAbsen: 9, nisn: "3169474236", nama: "Athifa Nur Pelangi" },
+  { id: "3153495240", nomorAbsen: 10, nisn: "3153495240", nama: "Fairel Atharizz Calief" },
+  { id: "3155825302", nomorAbsen: 11, nisn: "3155825302", nama: "Fatih Pratama Basuki" },
+  { id: "3159944404", nomorAbsen: 12, nisn: "3159944404", nama: "Flora Baby Queen" },
+  { id: "3155235740", nomorAbsen: 13, nisn: "3155235740", nama: "Gilang Aditya Ramadhan" },
+  { id: "3169421033", nomorAbsen: 14, nisn: "3169421033", nama: "Ilham Ibrahim" },
+  { id: "0137469444", nomorAbsen: 15, nisn: "0137469444", nama: "Inara Huwaida Ardhani" },
+  { id: "3155739832", nomorAbsen: 16, nisn: "3155739832", nama: "Kinara Adisti Salsabila" },
+  { id: "3164599601", nomorAbsen: 17, nisn: "3164599601", nama: "Kirana Hafizah Iqra Nasution" },
+  { id: "3152422747", nomorAbsen: 18, nisn: "3152422747", nama: "Latifa Rafanda" },
+  { id: "3152848251", nomorAbsen: 19, nisn: "3152848251", nama: "Meshya Belliza Utama" },
+  { id: "3151303538", nomorAbsen: 20, nisn: "3151303538", nama: "Muhammad Ali Alfarizi" },
+  { id: "3158326656", nomorAbsen: 21, nisn: "3158326656", nama: "Nayla Latifa" },
+  { id: "3155846202", nomorAbsen: 22, nisn: "3155846202", nama: "Quenzino Satria Hadika" },
+  { id: "3152660139", nomorAbsen: 23, nisn: "3152660139", nama: "Reynand Pratama" },
+  { id: "3156646475", nomorAbsen: 24, nisn: "3156646475", nama: "Shakila Qiyana Shadiqah" },
+  { id: "3158512331", nomorAbsen: 25, nisn: "3158512331", nama: "Shanum Meyra Rosadi" },
+];
+
+let SISWA = [...SISWA_FALLBACK];
 
 // ========== STATE ==========
 const state = {
@@ -119,6 +144,7 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     const tab = btn.dataset.tab;
     document.querySelectorAll(".tab-panel").forEach((p) => (p.style.display = "none"));
     document.getElementById(`tab-${tab}`).style.display = "block";
+    if (tab === "siswa") renderTabSiswa();
   });
 });
 
@@ -181,7 +207,6 @@ function renderTP() {
     return;
   }
 
-  // Group by elemen
   const byElemen = {};
   tps.forEach((tp) => {
     if (!byElemen[tp.elemen]) byElemen[tp.elemen] = [];
@@ -223,7 +248,7 @@ function renderInputNilai() {
   document.getElementById("catatan").value = "";
 
   const list = document.getElementById("siswa-nilai-list");
-  list.innerHTML = MOCK_SISWA.map(
+  list.innerHTML = SISWA.map(
     (s) => `
     <div class="siswa-row">
       <span class="absen">${s.nomorAbsen}</span>
@@ -231,6 +256,24 @@ function renderInputNilai() {
       <input type="number" min="0" max="100" step="1" data-siswa="${s.id}" placeholder="0–100" />
     </div>`
   ).join("");
+}
+
+function renderTabSiswa() {
+  const panel = document.getElementById("tab-siswa");
+  panel.innerHTML = `
+    <p class="page-desc">Kelas 5A · ${SISWA.length} siswa</p>
+    <div class="input-panel">
+      <div class="siswa-nilai-list" style="max-height:none">
+        ${SISWA.map(
+          (s) => `
+          <div class="siswa-row" style="grid-template-columns: 2.5rem 1fr auto">
+            <span class="absen">${s.nomorAbsen}</span>
+            <span class="nama">${escapeHtml(s.nama)}</span>
+            <span style="font-size:0.8rem;color:#a0aec0">${escapeHtml(s.nisn)}</span>
+          </div>`
+        ).join("")}
+      </div>
+    </div>`;
 }
 
 // ========== ACTIONS ==========
@@ -287,12 +330,14 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
 
   const nilaiMap = {};
   let adaNilai = false;
+  let errorAbsen = null;
+
   inputs.forEach((inp) => {
     const v = inp.value.trim();
     if (v !== "") {
       const n = Number(v);
       if (isNaN(n) || n < 0 || n > 100) {
-        showError(`Nilai harus 0–100 (cek absen ${inp.closest(".siswa-row").querySelector(".absen").textContent})`);
+        errorAbsen = inp.closest(".siswa-row").querySelector(".absen").textContent;
         return;
       }
       nilaiMap[inp.dataset.siswa] = n;
@@ -300,6 +345,10 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
     }
   });
 
+  if (errorAbsen) {
+    showError(`Nilai harus 0–100 (cek absen ${errorAbsen})`);
+    return;
+  }
   if (!adaNilai) {
     showError("Isi minimal satu nilai siswa.");
     return;
@@ -309,7 +358,6 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
     return;
   }
 
-  // MOCK: simpan ke console / localStorage sementara
   const payload = {
     mapelId: state.mapel.id,
     tpId: state.tp.id,
@@ -325,7 +373,6 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
   localStorage.setItem(key, JSON.stringify(payload));
 
   showSuccess("Nilai tersimpan (sementara di browser). Kembali ke daftar kompetensi.");
-  // AR-11: kembali ke daftar kompetensi TP yang sama
   goToKompetensi();
 });
 
@@ -352,6 +399,26 @@ function showSuccess(msg) {
   setTimeout(() => el.classList.remove("show"), 3000);
 }
 
+async function loadSiswa() {
+  try {
+    const res = await fetch("data/siswa-5a.json");
+    if (!res.ok) throw new Error("fetch failed");
+    const data = await res.json();
+    SISWA = (data.siswa || []).map((s) => ({
+      id: s.nisn,
+      nomorAbsen: s.nomorAbsen,
+      nisn: s.nisn,
+      nama: s.nama,
+    }));
+  } catch (e) {
+    console.warn("Gagal muat siswa-5a.json, pakai fallback.", e);
+    SISWA = [...SISWA_FALLBACK];
+  }
+}
+
 // ========== INIT ==========
-renderMapel();
-showStep("step-mapel");
+(async function init() {
+  await loadSiswa();
+  renderMapel();
+  showStep("step-mapel");
+})();
