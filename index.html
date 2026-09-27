@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Penilaian Guru Pemula</title>
+  <title>Login - Guru Pemula</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body class="login-page">
   <div class="login-card">
     <h1>Guru Pemula</h1>
-    <p class="subtitle">Masuk untuk mengakses aplikasi penilaian</p>
+    <p class="subtitle">Masuk untuk mengakses aplikasi</p>
 
     <div id="error-msg" class="error-msg"></div>
 
@@ -21,23 +21,18 @@
 
       <div class="form-group">
         <label for="password">Password</label>
-        <input type="password" id="password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="current-password" />
+        <input type="password" id="password" placeholder="Password" required minlength="6" autocomplete="current-password" />
       </div>
 
       <button type="submit" class="btn btn-primary" id="submit-btn">Masuk</button>
     </form>
-
-    <p class="toggle-auth">
-      <span id="toggle-text">Belum punya akun?</span>
-      <a href="#" id="toggle-link">Daftar di sini</a>
-    </p>
   </div>
 
   <div class="loading-overlay" id="loading">
     <div class="spinner"></div>
   </div>
 
-  <!-- Firebase SDK (compat version agar mudah digunakan) -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -48,32 +43,9 @@
     // Redirect jika sudah login
     redirectIfLoggedIn();
 
-    let isLoginMode = true;
-
     const form = document.getElementById("auth-form");
-    const submitBtn = document.getElementById("submit-btn");
-    const toggleLink = document.getElementById("toggle-link");
-    const toggleText = document.getElementById("toggle-text");
     const errorMsg = document.getElementById("error-msg");
     const loading = document.getElementById("loading");
-
-    // Toggle antara Login dan Daftar
-    toggleLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      isLoginMode = !isLoginMode;
-
-      if (isLoginMode) {
-        submitBtn.textContent = "Masuk";
-        toggleText.textContent = "Belum punya akun?";
-        toggleLink.textContent = "Daftar di sini";
-      } else {
-        submitBtn.textContent = "Daftar";
-        toggleText.textContent = "Sudah punya akun?";
-        toggleLink.textContent = "Masuk di sini";
-      }
-
-      errorMsg.classList.remove("show");
-    });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -84,12 +56,7 @@
       const password = document.getElementById("password").value;
 
       try {
-        if (isLoginMode) {
-          await auth.signInWithEmailAndPassword(email, password);
-        } else {
-          await auth.createUserWithEmailAndPassword(email, password);
-        }
-        // Redirect akan ditangani oleh onAuthStateChanged di redirectIfLoggedIn
+        await auth.signInWithEmailAndPassword(email, password);
         window.location.href = "dashboard.html";
       } catch (error) {
         loading.classList.remove("show");
@@ -101,17 +68,14 @@
           case "auth/invalid-credential":
             message = "Email atau password salah.";
             break;
-          case "auth/email-already-in-use":
-            message = "Email sudah terdaftar. Silakan masuk.";
-            break;
-          case "auth/weak-password":
-            message = "Password minimal 6 karakter.";
-            break;
           case "auth/invalid-email":
             message = "Format email tidak valid.";
             break;
           case "auth/too-many-requests":
             message = "Terlalu banyak percobaan. Coba lagi nanti.";
+            break;
+          case "auth/user-disabled":
+            message = "Akun ini dinonaktifkan.";
             break;
         }
 
