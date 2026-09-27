@@ -1,54 +1,55 @@
-/**
- * penilaian-ui.js — sidebar + spreadsheet workspace
- */
+/** penilaian-ui.js — sidebar + sheet */
 
-const SISWA_FALLBACK = [
-  { id: "3153742941", nomorAbsen: 1, nisn: "3153742941", nama: "Abdurrahman Ar Ribery" },
-  { id: "3162659714", nomorAbsen: 2, nisn: "3162659714", nama: "Abyan Nandana Khalif" },
-  { id: "3150563992", nomorAbsen: 3, nisn: "3150563992", nama: "Adskhan Ibran Elfatih" },
-  { id: "3159409800", nomorAbsen: 4, nisn: "3159409800", nama: "Afiya Nur Ataya Sandi" },
-  { id: "3156365089", nomorAbsen: 5, nisn: "3156365089", nama: "Aisyah Afqohunnisa" },
-  { id: "3150790933", nomorAbsen: 6, nisn: "3150790933", nama: "Akhdan Ziyad" },
-  { id: "3161535657", nomorAbsen: 7, nisn: "3161535657", nama: "Alam Rayyan Fiyanto" },
-  { id: "0169932726", nomorAbsen: 8, nisn: "0169932726", nama: "Arsyila Almahyira Azgefa" },
-  { id: "3169474236", nomorAbsen: 9, nisn: "3169474236", nama: "Athifa Nur Pelangi" },
-  { id: "3153495240", nomorAbsen: 10, nisn: "3153495240", nama: "Fairel Atharizz Calief" },
-  { id: "3155825302", nomorAbsen: 11, nisn: "3155825302", nama: "Fatih Pratama Basuki" },
-  { id: "3159944404", nomorAbsen: 12, nisn: "3159944404", nama: "Flora Baby Queen" },
-  { id: "3155235740", nomorAbsen: 13, nisn: "3155235740", nama: "Gilang Aditya Ramadhan" },
-  { id: "3169421033", nomorAbsen: 14, nisn: "3169421033", nama: "Ilham Ibrahim" },
-  { id: "0137469444", nomorAbsen: 15, nisn: "0137469444", nama: "Inara Huwaida Ardhani" },
-  { id: "3155739832", nomorAbsen: 16, nisn: "3155739832", nama: "Kinara Adisti Salsabila" },
-  { id: "3164599601", nomorAbsen: 17, nisn: "3164599601", nama: "Kirana Hafizah Iqra Nasution" },
-  { id: "3152422747", nomorAbsen: 18, nisn: "3152422747", nama: "Latifa Rafanda" },
-  { id: "3152848251", nomorAbsen: 19, nisn: "3152848251", nama: "Meshya Belliza Utama" },
-  { id: "3151303538", nomorAbsen: 20, nisn: "3151303538", nama: "Muhammad Ali Alfarizi" },
-  { id: "3158326656", nomorAbsen: 21, nisn: "3158326656", nama: "Nayla Latifa" },
-  { id: "3155846202", nomorAbsen: 22, nisn: "3155846202", nama: "Quenzino Satria Hadika" },
-  { id: "3152660139", nomorAbsen: 23, nisn: "3152660139", nama: "Reynand Pratama" },
-  { id: "3156646475", nomorAbsen: 24, nisn: "3156646475", nama: "Shakila Qiyana Shadiqah" },
-  { id: "3158512331", nomorAbsen: 25, nisn: "3158512331", nama: "Shanum Meyra Rosadi" },
-];
+function mapSiswaRow(s) {
+  return {
+    id: String(s.nisn),
+    nomorAbsen: s.nomorAbsen,
+    nisn: String(s.nisn),
+    nis: s.nis || "",
+    nama: s.nama || "",
+    tempatLahir: s.tempatLahir || "",
+    tanggalLahir: s.tanggalLahir || "",
+    jenisKelamin: s.jenisKelamin || "",
+    alamat: s.alamat || "",
+  };
+}
 
-let SISWA = [...SISWA_FALLBACK];
+let SISWA = [];
 let SISWA_SOURCE = "fallback";
 let KURIKULUM = [];
 let KURIKULUM_SOURCE = "none";
-
 const state = { mapelId: "", tpId: "", kompetensiId: "", tpTabMapelId: null };
+const TITLES = { input: "Input Nilai", rekap: "Rekap", siswa: "Siswa", tp: "Kurikulum / TP" };
 
-const TITLES = {
-  input: "Input Nilai",
-  rekap: "Rekap",
-  siswa: "Siswa",
-  tp: "Kurikulum / TP",
-};
+function normalizeKurikulum(mapelList) {
+  return (mapelList || []).map((m) => ({
+    ...m,
+    tp: (m.tp || []).map((tp) => {
+      if (typeof normalizeTP === "function") return normalizeTP({ ...tp });
+      const b = Number(tp.bobot) || 0;
+      const sem = tp.semester || "kedua";
+      let bobot1 = tp.bobot1,
+        bobot2 = tp.bobot2;
+      if (bobot1 == null && bobot2 == null) {
+        if (sem === "1") {
+          bobot1 = b;
+          bobot2 = 0;
+        } else if (sem === "2") {
+          bobot1 = 0;
+          bobot2 = b;
+        } else {
+          bobot1 = b;
+          bobot2 = b;
+        }
+      }
+      return { ...tp, bobot1: Number(bobot1) || 0, bobot2: Number(bobot2) || 0 };
+    }),
+  }));
+}
 
-/* —— Nav —— */
 document.querySelectorAll(".sidebar-nav .nav-item[data-tab]").forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
-
 document.getElementById("sidebar-toggle")?.addEventListener("click", () => {
   document.getElementById("sidebar").classList.toggle("open");
 });
@@ -62,15 +63,11 @@ function switchTab(tab) {
   });
   document.getElementById("topbar-title").textContent = TITLES[tab] || tab;
   document.getElementById("sidebar")?.classList.remove("open");
-
-  const actions = document.getElementById("topbar-actions");
-  actions.innerHTML = "";
-
+  document.getElementById("topbar-actions").innerHTML = "";
   if (tab === "siswa") renderTabSiswa();
   if (tab === "tp") renderTabTP();
 }
 
-/* —— Input: cascade selects —— */
 function fillMapelSelect() {
   const sel = document.getElementById("sel-mapel");
   sel.innerHTML =
@@ -149,14 +146,12 @@ document.getElementById("sel-mapel").addEventListener("change", (e) => {
   fillKompetensiSelect();
   updateInputWorkspace();
 });
-
 document.getElementById("sel-tp").addEventListener("change", (e) => {
   state.tpId = e.target.value;
   state.kompetensiId = "";
   fillKompetensiSelect();
   updateInputWorkspace();
 });
-
 document.getElementById("sel-kompetensi").addEventListener("change", (e) => {
   state.kompetensiId = e.target.value;
   updateInputWorkspace();
@@ -167,8 +162,8 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
   const catatan = document.getElementById("catatan").value.trim();
   const inputs = document.querySelectorAll("#tbody-nilai input[data-siswa]");
   const nilaiMap = {};
-  let ada = false;
-  let bad = null;
+  let ada = false,
+    bad = null;
   inputs.forEach((inp) => {
     const v = inp.value.trim();
     if (v === "") return;
@@ -183,7 +178,6 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
   if (bad) return showError(`Nilai 0–100 (baris ${bad})`);
   if (!ada) return showError("Isi minimal satu nilai.");
   if (!tanggal) return showError("Tanggal wajib.");
-
   const payload = {
     mapelId: state.mapelId,
     tpId: state.tpId,
@@ -200,28 +194,50 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
   showSuccess("Nilai tersimpan (sementara di browser).");
 });
 
-/* —— Siswa (sheet) —— */
+/* —— Siswa editable —— */
 function renderTabSiswa() {
   const panel = document.getElementById("tab-siswa");
   const src = SISWA_SOURCE === "firestore" ? "Firestore ✓" : SISWA_SOURCE === "json" ? "JSON" : "Lokal";
-
   document.getElementById("topbar-actions").innerHTML = `
     <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-siswa">Muat ulang</button>
-    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-siswa">
-      ${SISWA_SOURCE === "firestore" ? "Seed ulang" : "Seed Firestore"}
-    </button>`;
+    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-siswa">${SISWA_SOURCE === "firestore" ? "Seed ulang" : "Seed Firestore"}</button>`;
 
   panel.innerHTML = `
-    <p class="page-desc" style="margin-bottom:.5rem">Kelas 5A · ${SISWA.length} siswa · sumber <strong>${src}</strong></p>
+    <p class="page-desc">5A · ${SISWA.length} siswa · <strong>${src}</strong> · edit sel lalu klik Simpan</p>
     <div class="table-scroll">
       <table class="sheet">
-        <thead><tr><th class="w-abs">No</th><th>Nama</th><th class="w-nilai">NISN</th></tr></thead>
+        <thead>
+          <tr>
+            <th class="w-abs">No</th>
+            <th>Nama</th>
+            <th class="w-nis">NISN</th>
+            <th class="w-nis">NIS</th>
+            <th class="w-jk">JK</th>
+            <th class="w-ttl">Tempat, Tgl lahir</th>
+            <th>Alamat</th>
+            <th class="w-act"></th>
+          </tr>
+        </thead>
         <tbody>
           ${SISWA.map(
-            (s) => `<tr>
-              <td class="num">${s.nomorAbsen}</td>
-              <td>${escapeHtml(s.nama)}</td>
+            (s) => `
+            <tr data-nisn="${escapeHtml(s.nisn)}">
+              <td class="w-abs"><input type="number" min="1" data-f="nomorAbsen" value="${s.nomorAbsen}" /></td>
+              <td><input type="text" data-f="nama" value="${escapeHtml(s.nama)}" /></td>
               <td class="cell-muted">${escapeHtml(s.nisn)}</td>
+              <td class="w-nis"><input type="text" data-f="nis" value="${escapeHtml(s.nis)}" /></td>
+              <td class="w-jk">
+                <select data-f="jenisKelamin">
+                  <option value="L" ${s.jenisKelamin === "L" ? "selected" : ""}>L</option>
+                  <option value="P" ${s.jenisKelamin === "P" ? "selected" : ""}>P</option>
+                </select>
+              </td>
+              <td class="w-ttl">
+                <input type="text" data-f="tempatLahir" value="${escapeHtml(s.tempatLahir)}" placeholder="Tempat" style="margin-bottom:2px" />
+                <input type="date" data-f="tanggalLahir" value="${escapeHtml(s.tanggalLahir)}" />
+              </td>
+              <td><input type="text" data-f="alamat" value="${escapeHtml(s.alamat)}" /></td>
+              <td class="w-act"><button type="button" class="btn btn-primary btn-sm btn-save-siswa">Simpan</button></td>
             </tr>`
           ).join("")}
         </tbody>
@@ -234,22 +250,44 @@ function renderTabSiswa() {
     showSuccess("Siswa dimuat ulang.");
   };
   document.getElementById("btn-seed-siswa").onclick = () => handleSeedSiswa(SISWA_SOURCE === "firestore");
+
+  panel.querySelectorAll(".btn-save-siswa").forEach((btn) => {
+    btn.onclick = async () => {
+      const tr = btn.closest("tr");
+      const nisn = tr.dataset.nisn;
+      const fields = {
+        nomorAbsen: Number(tr.querySelector('[data-f="nomorAbsen"]').value) || 0,
+        nama: tr.querySelector('[data-f="nama"]').value.trim(),
+        nis: tr.querySelector('[data-f="nis"]').value.trim(),
+        jenisKelamin: tr.querySelector('[data-f="jenisKelamin"]').value,
+        tempatLahir: tr.querySelector('[data-f="tempatLahir"]').value.trim(),
+        tanggalLahir: tr.querySelector('[data-f="tanggalLahir"]').value,
+        alamat: tr.querySelector('[data-f="alamat"]').value.trim(),
+      };
+      if (!fields.nama) return showError("Nama wajib.");
+      try {
+        if (SISWA_SOURCE === "firestore") await updateSiswa(nisn, fields);
+        const s = SISWA.find((x) => x.nisn === nisn);
+        if (s) Object.assign(s, fields);
+        showSuccess(`Siswa ${fields.nama} disimpan.`);
+      } catch (e) {
+        showError(e.message || "Gagal simpan siswa.");
+      }
+    };
+  });
 }
 
-/* —— Kurikulum TP (sheet editable) —— */
+/* —— Kurikulum: bobot1 / bobot2 —— */
 function renderTabTP() {
   const panel = document.getElementById("tab-tp");
   const src =
     KURIKULUM_SOURCE === "firestore" ? "Firestore ✓" : KURIKULUM_SOURCE === "json" ? "JSON" : "Kosong";
-
   if (!state.tpTabMapelId && KURIKULUM.length) state.tpTabMapelId = KURIKULUM[0].id;
   const mapel = KURIKULUM.find((m) => m.id === state.tpTabMapelId);
 
   document.getElementById("topbar-actions").innerHTML = `
     <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp">Muat ulang</button>
-    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp">
-      ${KURIKULUM_SOURCE === "firestore" ? "Seed ulang" : "Seed kurikulum"}
-    </button>`;
+    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp">${KURIKULUM_SOURCE === "firestore" ? "Seed ulang" : "Seed kurikulum"}</button>`;
 
   const mapelOptions = KURIKULUM.map(
     (m) =>
@@ -260,20 +298,21 @@ function renderTabTP() {
   let rows = `<tr><td colspan="6" class="cell-muted">Belum ada data. Seed kurikulum dulu.</td></tr>`;
 
   if (mapel) {
-    const bc = cekTotalBobot(mapel.tp || []);
-    extra = `<span class="bobot-pill ${bc.ok ? "ok" : "warn"}">${bc.ok ? "✓" : "⚠"} Bobot ${bc.total.toFixed(0)}%</span>`;
-
+    const bc = typeof cekBobotPerSemester === "function" ? cekBobotPerSemester(mapel.tp || []) : null;
+    if (bc) {
+      extra = `
+        <span class="bobot-pill ${bc.s1.ok ? "ok" : "warn"}">S1 ${bc.s1.total.toFixed(0)}%</span>
+        <span class="bobot-pill ${bc.s2.ok ? "ok" : "warn"}">S2 ${bc.s2.total.toFixed(0)}%</span>`;
+    }
     if (mapel.kelompokBobot) {
       const kb = mapel.kelompokBobot;
       const kbc = cekTotalBobot(Object.values(kb).map((b) => ({ bobot: Number(b) })));
       extra += `
-        <div class="cabang-row" style="margin-top:.5rem;width:100%">
+        <div class="cabang-row" style="width:100%;margin-top:.35rem">
           ${Object.entries(kb)
             .map(
-              ([n, b]) => `
-            <div class="ff"><label>${escapeHtml(n)}</label>
-              <input type="number" min="0" max="100" class="kb-input" data-cabang="${escapeHtml(n)}" value="${b}" />
-            </div>`
+              ([n, b]) =>
+                `<div class="ff"><label>${escapeHtml(n)}</label><input type="number" min="0" max="100" class="kb-input" data-cabang="${escapeHtml(n)}" value="${b}" /></div>`
             )
             .join("")}
           <button type="button" class="btn btn-primary btn-sm" id="btn-save-kb">Simpan cabang</button>
@@ -285,28 +324,21 @@ function renderTabTP() {
       .map((tp) => {
         const nK = (tp.kompetensi || []).length;
         return `<tr data-tp-id="${tp.id}">
-          <td><strong>${escapeHtml(tp.kode)}</strong>
-            ${tp.cabang ? `<div class="cell-muted">${escapeHtml(tp.cabang)}</div>` : ""}
-          </td>
-          <td class="cell-muted">${escapeHtml(tp.elemen || "")}</td>
-          <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot" value="${tp.bobot}" /></td>
-          <td class="w-sem">
-            <select data-field="semester">
-              <option value="1" ${tp.semester === "1" ? "selected" : ""}>1</option>
-              <option value="2" ${tp.semester === "2" ? "selected" : ""}>2</option>
-              <option value="kedua" ${tp.semester === "kedua" ? "selected" : ""}>Kedua</option>
-            </select>
-          </td>
-          <td><textarea data-field="tujuan" rows="2">${escapeHtml(tp.tujuan || "")}</textarea>
-            <details style="margin-top:.25rem">
+          <td class="w-kode"><strong>${escapeHtml(tp.kode)}</strong>${tp.cabang ? `<div class="cell-muted">${escapeHtml(tp.cabang)}</div>` : ""}</td>
+          <td class="w-elemen"><span class="elemen-text" title="${escapeHtml(tp.elemen || "")}">${escapeHtml(tp.elemen || "")}</span></td>
+          <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot1" value="${tp.bobot1 ?? 0}" title="Bobot semester 1" /></td>
+          <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot2" value="${tp.bobot2 ?? 0}" title="Bobot semester 2" /></td>
+          <td class="col-tujuan">
+            <textarea data-field="tujuan" rows="2">${escapeHtml(tp.tujuan || "")}</textarea>
+            <details style="margin-top:.2rem">
               <summary class="cell-muted" style="cursor:pointer">${nK} kompetensi</summary>
-              <div style="margin-top:.35rem">
+              <div style="margin-top:.3rem">
                 ${(tp.kompetensi || [])
                   .map(
                     (k, i) => `
-                  <div style="display:flex;gap:.35rem;margin-bottom:.25rem;align-items:center">
+                  <div style="display:flex;gap:.3rem;margin-bottom:.2rem;align-items:center">
                     <span class="cell-muted">${i + 1}</span>
-                    <input type="text" data-komp-id="${k.id}" value="${escapeHtml(k.deskripsi)}" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:.25rem .35rem;font-size:.75rem" />
+                    <input type="text" data-komp-id="${k.id}" value="${escapeHtml(k.deskripsi)}" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:.2rem .3rem;font-size:.75rem" />
                     <button type="button" class="btn btn-secondary btn-sm btn-save-komp" data-komp-id="${k.id}">OK</button>
                   </div>`
                   )
@@ -322,22 +354,19 @@ function renderTabTP() {
 
   panel.innerHTML = `
     <div class="filter-bar">
-      <div class="ff">
-        <label>Mapel</label>
-        <select id="tp-mapel-select">${mapelOptions || "<option>—</option>"}</select>
-      </div>
-      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">${extra}</div>
-      <span class="cell-muted" style="margin-left:auto;font-size:.72rem">Sumber: ${src}</span>
+      <div class="ff"><label>Mapel</label><select id="tp-mapel-select">${mapelOptions || "<option>—</option>"}</select></div>
+      <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">${extra}</div>
+      <span class="cell-muted" style="margin-left:auto;font-size:.7rem">${src}</span>
     </div>
     <div class="table-scroll">
       <table class="sheet">
         <thead>
           <tr>
-            <th>Kode</th>
-            <th>Elemen</th>
-            <th class="w-bobot">Bobot%</th>
-            <th class="w-sem">Semester</th>
-            <th>Tujuan / Kompetensi</th>
+            <th class="w-kode">Kode</th>
+            <th class="w-elemen">Elemen</th>
+            <th class="w-bobot">Bobot S1</th>
+            <th class="w-bobot">Bobot S2</th>
+            <th class="col-tujuan">Tujuan / Kompetensi</th>
             <th class="w-act"></th>
           </tr>
         </thead>
@@ -352,7 +381,6 @@ function renderTabTP() {
     showSuccess("Kurikulum dimuat ulang.");
   };
   document.getElementById("btn-seed-tp").onclick = () => handleSeedKurikulum(KURIKULUM_SOURCE === "firestore");
-
   document.getElementById("tp-mapel-select").onchange = (e) => {
     state.tpTabMapelId = e.target.value;
     renderTabTP();
@@ -362,16 +390,22 @@ function renderTabTP() {
     btn.onclick = async () => {
       const tr = btn.closest("tr");
       const tpId = btn.dataset.tpId;
-      const bobot = Number(tr.querySelector('[data-field="bobot"]').value);
-      const semester = tr.querySelector('[data-field="semester"]').value;
+      const bobot1 = Number(tr.querySelector('[data-field="bobot1"]').value) || 0;
+      const bobot2 = Number(tr.querySelector('[data-field="bobot2"]').value) || 0;
       const tujuan = tr.querySelector('[data-field="tujuan"]').value.trim();
-      if (isNaN(bobot) || bobot < 0 || bobot > 100) return showError("Bobot 0–100.");
+      if (bobot1 < 0 || bobot1 > 100 || bobot2 < 0 || bobot2 > 100) return showError("Bobot 0–100.");
+      let semester = "kedua";
+      if (bobot1 > 0 && bobot2 === 0) semester = "1";
+      else if (bobot2 > 0 && bobot1 === 0) semester = "2";
       try {
-        if (KURIKULUM_SOURCE === "firestore") await updateTP(tpId, { bobot, semester, tujuan });
+        if (KURIKULUM_SOURCE === "firestore") {
+          await updateTP(tpId, { bobot1, bobot2, bobot: bobot1 || bobot2, semester, tujuan });
+        }
         const m = KURIKULUM.find((x) => x.id === state.tpTabMapelId);
         const tp = m && m.tp.find((t) => t.id === tpId);
         if (tp) {
-          tp.bobot = bobot;
+          tp.bobot1 = bobot1;
+          tp.bobot2 = bobot2;
           tp.semester = semester;
           tp.tujuan = tujuan;
         }
@@ -424,17 +458,11 @@ function renderTabTP() {
   }
 }
 
-/* —— Load / seed —— */
 async function loadSiswaFromJson() {
   const res = await fetch("data/siswa-5a.json");
   if (!res.ok) throw new Error("fetch json failed");
   const data = await res.json();
-  return (data.siswa || []).map((s) => ({
-    id: String(s.nisn),
-    nomorAbsen: s.nomorAbsen,
-    nisn: String(s.nisn),
-    nama: s.nama,
-  }));
+  return (data.siswa || []).map(mapSiswaRow);
 }
 
 async function loadSiswa() {
@@ -455,7 +483,7 @@ async function loadSiswa() {
   } catch (e) {
     console.warn(e);
   }
-  SISWA = [...SISWA_FALLBACK];
+  SISWA = [];
   SISWA_SOURCE = "fallback";
 }
 
@@ -463,7 +491,7 @@ async function loadKurikulum() {
   try {
     const n = await countMapel();
     if (n > 0) {
-      KURIKULUM = await fetchKurikulumLengkap();
+      KURIKULUM = normalizeKurikulum(await fetchKurikulumLengkap());
       KURIKULUM_SOURCE = "firestore";
       return;
     }
@@ -474,7 +502,7 @@ async function loadKurikulum() {
     const res = await fetch("data/kurikulum-5a.json");
     if (!res.ok) throw new Error("fail");
     const data = await res.json();
-    KURIKULUM = data.mapel || [];
+    KURIKULUM = normalizeKurikulum(data.mapel || []);
     KURIKULUM_SOURCE = "json";
     return;
   } catch (e) {
@@ -488,12 +516,7 @@ async function handleSeedSiswa(force) {
   const loading = document.getElementById("loading");
   loading.classList.add("show");
   try {
-    let list;
-    try {
-      list = await loadSiswaFromJson();
-    } catch {
-      list = SISWA_FALLBACK.map(({ nomorAbsen, nisn, nama }) => ({ nomorAbsen, nisn, nama }));
-    }
+    const list = await loadSiswaFromJson();
     const r = await seedSiswaToFirestore(list, { force: !!force, kelas: "5A" });
     await loadSiswa();
     renderTabSiswa();
@@ -526,23 +549,18 @@ async function handleSeedKurikulum(force) {
 
 function formatFsError(e) {
   const msg = e.message || String(e);
-  if (msg.includes("permission") || e.code === "permission-denied") {
-    return "Izin ditolak. Cek login & Rules Firestore.";
-  }
+  if (msg.includes("permission") || e.code === "permission-denied") return "Izin ditolak. Cek login & Rules.";
   return msg;
 }
-
 function short(s, n) {
   s = s || "";
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
-
 function escapeHtml(str) {
   const d = document.createElement("div");
   d.textContent = str == null ? "" : String(str);
   return d.innerHTML;
 }
-
 function showError(msg) {
   const el = document.getElementById("error-msg");
   el.textContent = msg;
@@ -550,7 +568,6 @@ function showError(msg) {
   document.getElementById("success-msg").classList.remove("show");
   setTimeout(() => el.classList.remove("show"), 4500);
 }
-
 function showSuccess(msg) {
   const el = document.getElementById("success-msg");
   el.textContent = msg;
