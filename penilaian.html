@@ -19,7 +19,7 @@
     <a href="dashboard.html" class="back-link">← Dashboard</a>
 
     <h1 class="page-title">Penilaian</h1>
-    <p class="page-desc">Input nilai siswa mengikuti alur: Mapel → TP → Kompetensi → Nilai.</p>
+    <p class="page-desc">Input nilai: Mapel → TP → Kompetensi → Nilai. Kelola TP & bobot di tab TP.</p>
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="input">Input</button>
@@ -33,7 +33,7 @@
 
     <div id="tab-input" class="tab-panel">
       <div class="note-box">
-        Data <strong>siswa</strong> bisa dari Firestore (setelah seed). Mapel/TP masih contoh. Nilai masih disimpan sementara di browser.
+        Seed <strong>siswa</strong> (tab Siswa) dan <strong>kurikulum</strong> (tab TP) ke Firestore agar data persisten. Nilai masih disimpan sementara di browser.
       </div>
 
       <div class="breadcrumb" id="breadcrumb"></div>
@@ -66,9 +66,7 @@
               <input type="text" id="catatan" placeholder="Mis. Ulangan harian 1" />
             </div>
           </div>
-
           <div class="siswa-nilai-list" id="siswa-nilai-list"></div>
-
           <div class="form-actions">
             <button type="button" class="btn btn-primary" id="btn-simpan" style="width:auto">Simpan Nilai</button>
             <button type="button" class="btn btn-secondary" id="btn-batal" style="width:auto">Batal</button>
@@ -80,16 +78,11 @@
     <div id="tab-rekap" class="tab-panel" style="display:none">
       <div class="placeholder-box">
         <h2>Rekap</h2>
-        <p>Tabel siswa × TP dan riwayat kompetensi akan ditampilkan di sini.</p>
+        <p>Tabel siswa × TP akan ditampilkan di sini.</p>
       </div>
     </div>
     <div id="tab-siswa" class="tab-panel" style="display:none"></div>
-    <div id="tab-tp" class="tab-panel" style="display:none">
-      <div class="placeholder-box">
-        <h2>TP & Kompetensi</h2>
-        <p>Kelola Tujuan Pembelajaran dan kompetensi per mapel.</p>
-      </div>
-    </div>
+    <div id="tab-tp" class="tab-panel" style="display:none"></div>
   </div>
 
   <div class="loading-overlay" id="loading">
@@ -102,6 +95,7 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/siswa-db.js"></script>
+  <script src="js/tp-db.js"></script>
   <script src="js/penilaian-calc.js"></script>
   <script src="js/penilaian-ui.js"></script>
   <script>
