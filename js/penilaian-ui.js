@@ -1,7 +1,5 @@
 /**
- * penilaian-ui.js
- * Input: Mapel → TP → Kompetensi → Nilai
- * Tab TP: seed, edit bobot/semester/tujuan/kompetensi, bobot antar-cabang SB
+ * penilaian-ui.js — layout padat (lihat css/style.css)
  */
 
 const SISWA_FALLBACK = [
@@ -34,19 +32,11 @@ const SISWA_FALLBACK = [
 
 let SISWA = [...SISWA_FALLBACK];
 let SISWA_SOURCE = "fallback";
-
-/** Kurikulum: array mapel dengan tp[] + kompetensi[] */
 let KURIKULUM = [];
 let KURIKULUM_SOURCE = "none";
 
-const state = {
-  mapel: null,
-  tp: null,
-  kompetensi: null,
-  tpTabMapelId: null,
-};
+const state = { mapel: null, tp: null, kompetensi: null, tpTabMapelId: null };
 
-// ========== TABS ==========
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
@@ -59,7 +49,6 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
   });
 });
 
-// ========== RENDER INPUT ==========
 function showStep(stepId) {
   document.querySelectorAll(".step-section").forEach((s) => s.classList.remove("active"));
   document.getElementById(stepId).classList.add("active");
@@ -68,8 +57,7 @@ function showStep(stepId) {
 
 function renderBreadcrumb() {
   const el = document.getElementById("breadcrumb");
-  const parts = [];
-  parts.push(`<button type="button" onclick="goToMapel()">Mapel</button>`);
+  const parts = [`<button type="button" onclick="goToMapel()">Mapel</button>`];
   if (state.mapel) {
     parts.push(`<span class="sep">›</span>`);
     parts.push(
@@ -87,8 +75,7 @@ function renderBreadcrumb() {
     );
   }
   if (state.kompetensi) {
-    parts.push(`<span class="sep">›</span>`);
-    parts.push(`<span class="current">Kompetensi</span>`);
+    parts.push(`<span class="sep">›</span><span class="current">Kompetensi</span>`);
   }
   el.innerHTML = parts.join("");
 }
@@ -96,7 +83,7 @@ function renderBreadcrumb() {
 function renderMapel() {
   const list = document.getElementById("mapel-list");
   if (!KURIKULUM.length) {
-    list.innerHTML = `<p class="page-desc">Belum ada data mapel. Buka tab <strong>TP</strong> lalu seed kurikulum.</p>`;
+    list.innerHTML = `<p class="page-desc">Belum ada mapel. Tab <strong>TP</strong> → seed kurikulum.</p>`;
     return;
   }
   list.innerHTML = KURIKULUM.map(
@@ -112,7 +99,7 @@ function renderTP() {
   const container = document.getElementById("tp-list");
   const tps = state.mapel.tp || [];
   if (!tps.length) {
-    container.innerHTML = `<p class="page-desc">Belum ada TP untuk mapel ini.</p>`;
+    container.innerHTML = `<p class="page-desc">Belum ada TP.</p>`;
     return;
   }
   const byElemen = {};
@@ -125,12 +112,11 @@ function renderTP() {
   for (const [elemen, items] of Object.entries(byElemen)) {
     html += `<div class="elemen-group"><h2>${escapeHtml(elemen)}</h2><div class="choice-grid">`;
     items.forEach((tp) => {
-      const nKomp = (tp.kompetensi || []).length;
       html += `
         <button type="button" class="choice-card" onclick="pilihTP('${tp.id}')">
           <h3>${escapeHtml(tp.kode)}</h3>
           <p>${escapeHtml(tp.tujuan || "")}</p>
-          <div class="meta">Bobot ${tp.bobot}% · Sem ${tp.semester} · ${nKomp} kompetensi</div>
+          <div class="meta">${tp.bobot}% · Sem ${tp.semester} · ${(tp.kompetensi || []).length} komp.</div>
         </button>`;
     });
     html += `</div></div>`;
@@ -163,13 +149,12 @@ function renderInputNilai() {
     (s) => `
     <div class="siswa-row">
       <span class="absen">${s.nomorAbsen}</span>
-      <span class="nama">${escapeHtml(s.nama)}</span>
-      <input type="number" min="0" max="100" step="1" data-siswa="${s.id}" placeholder="0–100" />
+      <span class="nama" title="${escapeHtml(s.nama)}">${escapeHtml(s.nama)}</span>
+      <input type="number" min="0" max="100" step="1" data-siswa="${s.id}" placeholder="—" />
     </div>`
   ).join("");
 }
 
-// ========== ACTIONS INPUT ==========
 function pilihMapel(id) {
   state.mapel = KURIKULUM.find((m) => m.id === id);
   state.tp = null;
@@ -177,20 +162,17 @@ function pilihMapel(id) {
   renderTP();
   showStep("step-tp");
 }
-
 function pilihTP(id) {
   state.tp = (state.mapel.tp || []).find((t) => t.id === id);
   state.kompetensi = null;
   renderKompetensi();
   showStep("step-kompetensi");
 }
-
 function pilihKompetensi(id) {
   state.kompetensi = (state.tp.kompetensi || []).find((k) => k.id === id);
   renderInputNilai();
   showStep("step-nilai");
 }
-
 function goToMapel() {
   state.mapel = null;
   state.tp = null;
@@ -210,7 +192,6 @@ function goToKompetensi() {
 }
 
 document.getElementById("btn-batal").addEventListener("click", () => goToKompetensi());
-
 document.getElementById("btn-simpan").addEventListener("click", () => {
   const tanggal = document.getElementById("tanggal").value;
   const catatan = document.getElementById("catatan").value.trim();
@@ -230,10 +211,9 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
       adaNilai = true;
     }
   });
-  if (errorAbsen) return showError(`Nilai harus 0–100 (cek absen ${errorAbsen})`);
-  if (!adaNilai) return showError("Isi minimal satu nilai siswa.");
-  if (!tanggal) return showError("Tanggal wajib diisi.");
-
+  if (errorAbsen) return showError(`Nilai 0–100 (absen ${errorAbsen})`);
+  if (!adaNilai) return showError("Isi minimal satu nilai.");
+  if (!tanggal) return showError("Tanggal wajib.");
   const payload = {
     mapelId: state.mapel.id,
     tpId: state.tp.id,
@@ -243,7 +223,6 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
     nilai: nilaiMap,
     savedAt: new Date().toISOString(),
   };
-  console.log("[MOCK] Nilai:", payload);
   localStorage.setItem(
     `penilaian_mock_${payload.mapelId}_${payload.tpId}_${payload.kompetensiId}_${payload.tanggal}`,
     JSON.stringify(payload)
@@ -252,29 +231,28 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
   goToKompetensi();
 });
 
-// ========== TAB SISWA ==========
 function renderTabSiswa() {
   const panel = document.getElementById("tab-siswa");
   const sourceLabel =
-    SISWA_SOURCE === "firestore" ? "Firestore ✓" : SISWA_SOURCE === "json" ? "File JSON" : "Fallback lokal";
+    SISWA_SOURCE === "firestore" ? "Firestore ✓" : SISWA_SOURCE === "json" ? "JSON" : "Lokal";
   panel.innerHTML = `
-    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:1rem">
-      <p class="page-desc" style="margin:0">Kelas 5A · ${SISWA.length} siswa · <strong>${sourceLabel}</strong></p>
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <div class="tp-toolbar">
+      <p class="page-desc">5A · ${SISWA.length} siswa · <strong>${sourceLabel}</strong></p>
+      <div style="display:flex;gap:0.35rem">
         <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-siswa">Muat ulang</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-seed-siswa" style="width:auto">
-          ${SISWA_SOURCE === "firestore" ? "Seed ulang (timpa)" : "Seed ke Firestore"}
+        <button type="button" class="btn btn-primary btn-sm" id="btn-seed-siswa">
+          ${SISWA_SOURCE === "firestore" ? "Seed ulang" : "Seed Firestore"}
         </button>
       </div>
     </div>
     <div class="input-panel">
-      <div class="siswa-nilai-list" style="max-height:none">
+      <div class="siswa-nilai-list" style="max-height:min(60vh,480px)">
         ${SISWA.map(
           (s) => `
-          <div class="siswa-row" style="grid-template-columns: 2.5rem 1fr auto">
+          <div class="siswa-row" style="grid-template-columns:1.75rem 1fr auto">
             <span class="absen">${s.nomorAbsen}</span>
             <span class="nama">${escapeHtml(s.nama)}</span>
-            <span style="font-size:0.8rem;color:#a0aec0">${escapeHtml(s.nisn)}</span>
+            <span style="font-size:0.7rem;color:var(--text-faint)">${escapeHtml(s.nisn)}</span>
           </div>`
         ).join("")}
       </div>
@@ -282,47 +260,46 @@ function renderTabSiswa() {
   document.getElementById("btn-refresh-siswa").onclick = async () => {
     await loadSiswa();
     renderTabSiswa();
-    showSuccess("Data siswa dimuat ulang.");
+    showSuccess("Siswa dimuat ulang.");
   };
   document.getElementById("btn-seed-siswa").onclick = () => handleSeedSiswa(SISWA_SOURCE === "firestore");
 }
 
-// ========== TAB TP ==========
 function renderTabTP() {
   const panel = document.getElementById("tab-tp");
   const src =
     KURIKULUM_SOURCE === "firestore"
       ? "Firestore ✓"
       : KURIKULUM_SOURCE === "json"
-        ? "File JSON (belum seed)"
-        : "Belum ada data";
+        ? "JSON"
+        : "Kosong";
+
+  if (!state.tpTabMapelId && KURIKULUM.length) state.tpTabMapelId = KURIKULUM[0].id;
+  const mapel = KURIKULUM.find((m) => m.id === state.tpTabMapelId);
 
   const mapelOptions = KURIKULUM.map(
     (m) =>
       `<option value="${m.id}" ${state.tpTabMapelId === m.id ? "selected" : ""}>${escapeHtml(m.nama)}</option>`
   ).join("");
 
-  if (!state.tpTabMapelId && KURIKULUM.length) state.tpTabMapelId = KURIKULUM[0].id;
-  const mapel = KURIKULUM.find((m) => m.id === state.tpTabMapelId);
-
   let body = "";
   if (!mapel) {
-    body = `<p class="page-desc">Belum ada kurikulum. Klik <strong>Seed kurikulum ke Firestore</strong>.</p>`;
+    body = `<p class="page-desc">Belum ada kurikulum. Klik <strong>Seed kurikulum</strong>.</p>`;
   } else {
     const bobotCheck = cekTotalBobot(mapel.tp || []);
-    const bobotBadge = bobotCheck.ok
-      ? `<span style="color:#276749">✓ Total bobot ${bobotCheck.total.toFixed(0)}%</span>`
-      : `<span style="color:#c05621">⚠ Total bobot ${bobotCheck.total.toFixed(0)}% (selisih ${bobotCheck.selisih > 0 ? "+" : ""}${bobotCheck.selisih.toFixed(0)})</span>`;
+    const bobotClass = bobotCheck.ok ? "ok" : "warn";
+    const bobotText = bobotCheck.ok
+      ? `✓ Total bobot ${bobotCheck.total.toFixed(0)}%`
+      : `⚠ Total ${bobotCheck.total.toFixed(0)}% (${bobotCheck.selisih > 0 ? "+" : ""}${bobotCheck.selisih.toFixed(0)})`;
 
     let kelompokHtml = "";
     if (mapel.kelompokBobot) {
       const kb = mapel.kelompokBobot;
-      const kbItems = Object.entries(kb).map(([nama, bobot]) => ({ bobot: Number(bobot) }));
-      const kbCheck = cekTotalBobot(kbItems);
+      const kbCheck = cekTotalBobot(Object.values(kb).map((b) => ({ bobot: Number(b) })));
       kelompokHtml = `
-        <div class="input-panel" style="margin-bottom:1rem">
-          <h3 style="margin-bottom:0.75rem;font-size:1rem">Bobot antar cabang Seni Budaya</h3>
-          <div class="choice-grid">
+        <div class="input-panel" style="margin-bottom:0.5rem">
+          <div style="font-weight:600;font-size:0.75rem;margin-bottom:0.4rem">Bobot antar cabang</div>
+          <div class="cabang-grid">
             ${Object.entries(kb)
               .map(
                 ([nama, bobot]) => `
@@ -333,81 +310,77 @@ function renderTabTP() {
               )
               .join("")}
           </div>
-          <p style="margin-top:0.75rem;font-size:0.9rem">${kbCheck.ok ? "✓" : "⚠"} Total ${kbCheck.total}%</p>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-save-kb" style="width:auto;margin-top:0.5rem">Simpan bobot cabang</button>
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem">
+            <span class="bobot-status ${kbCheck.ok ? "ok" : "warn"}">${kbCheck.ok ? "✓" : "⚠"} ${kbCheck.total}%</span>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-save-kb">Simpan cabang</button>
+          </div>
         </div>`;
     }
 
     body = `
       ${kelompokHtml}
-      <p style="margin-bottom:1rem;font-size:0.9rem">${bobotBadge} · ideal 100% per semester (dicek di akhir)</p>
+      <p class="bobot-status ${bobotClass}">${bobotText} · ideal 100%/semester</p>
       ${(mapel.tp || [])
         .map((tp) => {
           const kompList = (tp.kompetensi || [])
             .map(
               (k, i) => `
-            <div class="siswa-row" style="grid-template-columns:2rem 1fr auto;margin-bottom:0.35rem">
+            <div class="komp-row">
               <span class="absen">${i + 1}</span>
-              <input type="text" data-komp-id="${k.id}" value="${escapeHtml(k.deskripsi)}" style="width:100%;padding:0.4rem 0.5rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.9rem" />
-              <button type="button" class="btn btn-secondary btn-sm btn-save-komp" data-komp-id="${k.id}">Simpan</button>
+              <input type="text" data-komp-id="${k.id}" value="${escapeHtml(k.deskripsi)}" />
+              <button type="button" class="btn btn-secondary btn-sm btn-save-komp" data-komp-id="${k.id}">OK</button>
             </div>`
             )
             .join("");
           return `
-          <div class="input-panel" style="margin-bottom:1rem" data-tp-id="${tp.id}">
-            <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:flex-start;justify-content:space-between">
-              <div style="flex:1;min-width:200px">
-                <strong>${escapeHtml(tp.kode)}</strong>
-                ${tp.cabang ? `<span style="color:#718096;font-size:0.85rem"> · ${escapeHtml(tp.cabang)}</span>` : ""}
-                <p style="font-size:0.85rem;color:#718096;margin:0.25rem 0">${escapeHtml(tp.elemen || "")}</p>
+          <div class="tp-card" data-tp-id="${tp.id}">
+            <div class="tp-card-head">
+              <div>
+                <span class="tp-id">${escapeHtml(tp.kode)}</span>
+                ${tp.cabang ? `<span class="tp-meta"> · ${escapeHtml(tp.cabang)}</span>` : ""}
+                <div class="tp-meta">${escapeHtml(tp.elemen || "")}</div>
               </div>
-              <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:0.75rem">Bobot %</label>
-                  <input type="number" min="0" max="100" step="1" data-field="bobot" value="${tp.bobot}" style="width:4.5rem;padding:0.4rem;border:1.5px solid #e2e8f0;border-radius:8px" />
+              <div class="tp-card-controls">
+                <div>
+                  <label>Bobot</label><br/>
+                  <input type="number" min="0" max="100" step="1" data-field="bobot" value="${tp.bobot}" />
                 </div>
-                <div class="form-group" style="margin:0">
-                  <label style="font-size:0.75rem">Semester</label>
-                  <select data-field="semester" style="padding:0.4rem;border:1.5px solid #e2e8f0;border-radius:8px">
+                <div>
+                  <label>Sem</label><br/>
+                  <select data-field="semester">
                     <option value="1" ${tp.semester === "1" ? "selected" : ""}>1</option>
                     <option value="2" ${tp.semester === "2" ? "selected" : ""}>2</option>
                     <option value="kedua" ${tp.semester === "kedua" ? "selected" : ""}>Kedua</option>
                   </select>
                 </div>
-                <button type="button" class="btn btn-primary btn-sm btn-save-tp" data-tp-id="${tp.id}" style="align-self:flex-end">Simpan TP</button>
+                <button type="button" class="btn btn-primary btn-sm btn-save-tp" data-tp-id="${tp.id}">Simpan</button>
               </div>
             </div>
-            <div class="form-group" style="margin-top:0.75rem">
-              <label style="font-size:0.75rem">Tujuan pembelajaran</label>
-              <textarea data-field="tujuan" rows="2" style="width:100%;padding:0.5rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.9rem;font-family:inherit">${escapeHtml(tp.tujuan || "")}</textarea>
+            <div class="tp-card-body">
+              <textarea data-field="tujuan" rows="2">${escapeHtml(tp.tujuan || "")}</textarea>
+              <details>
+                <summary>Kompetensi (${(tp.kompetensi || []).length})</summary>
+                ${kompList || "<p class=page-desc>Belum ada</p>"}
+              </details>
             </div>
-            <details style="margin-top:0.5rem">
-              <summary style="cursor:pointer;font-weight:600;font-size:0.9rem">Kompetensi (${(tp.kompetensi || []).length})</summary>
-              <div style="margin-top:0.75rem">${kompList || "<p class=page-desc>Belum ada kompetensi</p>"}</div>
-            </details>
           </div>`;
         })
         .join("")}`;
   }
 
   panel.innerHTML = `
-    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:1rem">
-      <p class="page-desc" style="margin:0">Kurikulum · sumber: <strong>${src}</strong></p>
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <div class="tp-toolbar">
+      <p class="page-desc">Kurikulum · <strong>${src}</strong></p>
+      <div style="display:flex;gap:0.35rem">
         <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp">Muat ulang</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp" style="width:auto">
-          ${KURIKULUM_SOURCE === "firestore" ? "Seed ulang (timpa)" : "Seed kurikulum ke Firestore"}
+        <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp">
+          ${KURIKULUM_SOURCE === "firestore" ? "Seed ulang" : "Seed kurikulum"}
         </button>
       </div>
     </div>
-    <div class="note-box">
-      Kompetensi IPAS & PP disusun dari rumusan TP revisi (belum ada di data offline). Bobot bawaan bisa diubah. Ideal total 100% per semester.
-    </div>
-    <div class="form-group">
-      <label>Pilih mapel</label>
-      <select id="tp-mapel-select" style="width:100%;max-width:320px;padding:0.6rem;border:1.5px solid #e2e8f0;border-radius:10px">
-        ${mapelOptions || "<option value=\"\">—</option>"}
-      </select>
+    <div class="tp-mapel-row">
+      <label>Mapel</label>
+      <select id="tp-mapel-select">${mapelOptions || "<option>—</option>"}</select>
     </div>
     <div id="tp-edit-body">${body}</div>`;
 
@@ -434,12 +407,9 @@ function renderTabTP() {
       const bobot = Number(card.querySelector('[data-field="bobot"]').value);
       const semester = card.querySelector('[data-field="semester"]').value;
       const tujuan = card.querySelector('[data-field="tujuan"]').value.trim();
-      if (isNaN(bobot) || bobot < 0 || bobot > 100) return showError("Bobot harus 0–100.");
+      if (isNaN(bobot) || bobot < 0 || bobot > 100) return showError("Bobot 0–100.");
       try {
-        if (KURIKULUM_SOURCE === "firestore") {
-          await updateTP(tpId, { bobot, semester, tujuan });
-        }
-        // update lokal
+        if (KURIKULUM_SOURCE === "firestore") await updateTP(tpId, { bobot, semester, tujuan });
         const m = KURIKULUM.find((x) => x.id === state.tpTabMapelId);
         const tp = m && m.tp.find((t) => t.id === tpId);
         if (tp) {
@@ -460,11 +430,9 @@ function renderTabTP() {
       const kompId = btn.dataset.kompId;
       const input = panel.querySelector(`input[data-komp-id="${kompId}"]`);
       const deskripsi = input.value.trim();
-      if (!deskripsi) return showError("Deskripsi kompetensi tidak boleh kosong.");
+      if (!deskripsi) return showError("Deskripsi kosong.");
       try {
-        if (KURIKULUM_SOURCE === "firestore") {
-          await updateKompetensi(kompId, { deskripsi });
-        }
+        if (KURIKULUM_SOURCE === "firestore") await updateKompetensi(kompId, { deskripsi });
         for (const m of KURIKULUM) {
           for (const tp of m.tp || []) {
             const k = (tp.kompetensi || []).find((x) => x.id === kompId);
@@ -473,7 +441,7 @@ function renderTabTP() {
         }
         showSuccess("Kompetensi disimpan.");
       } catch (e) {
-        showError(e.message || "Gagal simpan kompetensi.");
+        showError(e.message || "Gagal simpan.");
       }
     };
   });
@@ -481,32 +449,24 @@ function renderTabTP() {
   const btnKb = document.getElementById("btn-save-kb");
   if (btnKb) {
     btnKb.onclick = async () => {
-      const inputs = panel.querySelectorAll(".kb-input");
       const kelompokBobot = {};
-      inputs.forEach((inp) => {
+      panel.querySelectorAll(".kb-input").forEach((inp) => {
         kelompokBobot[inp.dataset.cabang] = Number(inp.value) || 0;
       });
       const check = cekTotalBobot(Object.values(kelompokBobot).map((b) => ({ bobot: b })));
       try {
-        if (KURIKULUM_SOURCE === "firestore") {
-          await updateMapel(state.tpTabMapelId, { kelompokBobot });
-        }
+        if (KURIKULUM_SOURCE === "firestore") await updateMapel(state.tpTabMapelId, { kelompokBobot });
         const m = KURIKULUM.find((x) => x.id === state.tpTabMapelId);
         if (m) m.kelompokBobot = kelompokBobot;
-        showSuccess(
-          check.ok
-            ? "Bobot antar cabang disimpan (100%)."
-            : `Bobot disimpan. Total ${check.total}% (belum 100%).`
-        );
+        showSuccess(check.ok ? "Bobot cabang 100%." : `Disimpan · total ${check.total}%`);
         renderTabTP();
       } catch (e) {
-        showError(e.message || "Gagal simpan bobot cabang.");
+        showError(e.message || "Gagal simpan.");
       }
     };
   }
 }
 
-// ========== LOAD & SEED ==========
 async function loadSiswaFromJson() {
   const res = await fetch("data/siswa-5a.json");
   if (!res.ok) throw new Error("fetch json failed");
@@ -583,11 +543,7 @@ async function handleSeedSiswa(force) {
     const result = await seedSiswaToFirestore(sourceList, { force: !!force, kelas: "5A" });
     await loadSiswa();
     renderTabSiswa();
-    showSuccess(
-      force
-        ? `Seed siswa: ${result.written} ditulis.`
-        : `Seed siswa: ${result.written} baru, ${result.skipped} dilewati.`
-    );
+    showSuccess(`Seed siswa: ${result.written} ditulis, ${result.skipped} dilewati.`);
   } catch (e) {
     showError(formatFsError(e));
   } finally {
@@ -606,11 +562,7 @@ async function handleSeedKurikulum(force) {
     await loadKurikulum();
     renderTabTP();
     renderMapel();
-    showSuccess(
-      `Seed kurikulum: ${result.mapel} mapel, ${result.tp} TP, ${result.kompetensi} kompetensi` +
-        (result.skipped ? `, ${result.skipped} dilewati` : "") +
-        "."
-    );
+    showSuccess(`Seed: ${result.mapel} mapel, ${result.tp} TP, ${result.kompetensi} komp.`);
   } catch (e) {
     showError(formatFsError(e));
   } finally {
@@ -621,7 +573,7 @@ async function handleSeedKurikulum(force) {
 function formatFsError(e) {
   const msg = e.message || String(e);
   if (msg.includes("permission") || e.code === "permission-denied") {
-    return "Izin ditolak. Pastikan login dan Rules Firestore mengizinkan read/write.";
+    return "Izin ditolak. Cek login & Rules Firestore.";
   }
   return msg;
 }
@@ -637,7 +589,7 @@ function showError(msg) {
   el.textContent = msg;
   el.classList.add("show");
   document.getElementById("success-msg").classList.remove("show");
-  setTimeout(() => el.classList.remove("show"), 5000);
+  setTimeout(() => el.classList.remove("show"), 4500);
 }
 
 function showSuccess(msg) {
@@ -645,7 +597,7 @@ function showSuccess(msg) {
   el.textContent = msg;
   el.classList.add("show");
   document.getElementById("error-msg").classList.remove("show");
-  setTimeout(() => el.classList.remove("show"), 4000);
+  setTimeout(() => el.classList.remove("show"), 3500);
 }
 
 (async function init() {
