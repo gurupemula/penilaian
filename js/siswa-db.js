@@ -18,19 +18,20 @@ const SISWA_COLLECTION = "siswa";
 const KELAS_DEFAULT = "5A";
 
 /**
- * Ambil semua siswa aktif, diurutkan nomor absen.
+ * Ambil semua siswa aktif untuk satu kelas, diurutkan nomor absen.
+ * Query hanya filter kelas (satu field) agar tidak wajib composite index.
  * @returns {Promise<Array<{id, nomorAbsen, nisn, nama, kelas}>>}
  */
 async function fetchSiswaFromFirestore(kelas = KELAS_DEFAULT) {
   const snap = await db
     .collection(SISWA_COLLECTION)
     .where("kelas", "==", kelas)
-    .where("aktif", "==", true)
     .get();
 
   const list = [];
   snap.forEach((doc) => {
     const d = doc.data();
+    if (d.aktif === false) return;
     list.push({
       id: doc.id,
       nomorAbsen: d.nomorAbsen,
@@ -45,9 +46,9 @@ async function fetchSiswaFromFirestore(kelas = KELAS_DEFAULT) {
 }
 
 /**
- * Seed siswa dari array (mis. isi data/siswa-5a.json).
- * Memakai batch write. Document ID = nisn.
- * Tidak menimpa jika sudah ada (merge: false) — kecuali force=true.
+ * Seed siswa dari array (isi data/siswa-5a.json).
+ * Document ID = nisn. Batch write.
+ * Jika force=false, dokumen yang sudah ada dilewati.
  *
  * @param {Array<{nomorAbsen, nisn, nama}>} siswaList
  * @param {{ force?: boolean, kelas?: string }} options
@@ -59,7 +60,6 @@ async function seedSiswaToFirestore(siswaList, options = {}) {
   let written = 0;
   let skipped = 0;
 
-  // Batch max 500; kita cuma 25 siswa
   const batch = db.batch();
 
   for (const s of siswaList) {
@@ -73,19 +73,20 @@ async function seedSiswaToFirestore(siswaList, options = {}) {
       }
     }
 
-    batch.set(
-      ref,
-      {
-        nomorAbsen: s.nomorAbsen,
-        nisn: String(s.nisn),
-        nama: s.nama,
-        kelas,
-        aktif: true,
-        createdAt: now,
-        updatedAt: now,
-      },
-      { merge: force }
-    );
+    const payload = {
+      nomorAbsen: s.nomorAbsen,
+      nisn: String(s.nisn),
+      nama: s.nama,
+      kelas,
+      aktif: true,
+      updatedAt: now,
+    };
+    if (force) {
+      batch.set(ref, payload, { merge: true });
+    } else {
+      payload.createdAt = now;
+      batch.set(ref, payload);
+    }
     written++;
   }
 
@@ -97,7 +98,7 @@ async function seedSiswaToFirestore(siswaList, options = {}) {
 }
 
 /**
- * Update satu field siswa (mis. nama).
+ * Update field siswa.
  */
 async function updateSiswa(nisn, fields) {
   const ref = db.collection(SISWA_COLLECTION).doc(String(nisn));
@@ -105,4 +106,12 @@ async function updateSiswa(nisn, fields) {
     ...fields,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
   });
+}
+
+/**
+ * Cek apakah collection siswa sudah terisi untuk kelas tertentu.
+ */
+async function countSiswa(kelas = KELAS_DEFAULT) {
+  const snap = await db.collection(SISWA_COLLECTION).where("kelas", "==", kelas).get();
+  return snap.size;
 }
