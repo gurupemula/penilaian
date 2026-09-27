@@ -1,7 +1,7 @@
 /**
  * penilaian-ui.js
  * Alur Input: Mapel → TP → Kompetensi → Nilai
- * Data siswa: data/siswa-5a.json
+ * Siswa: Firestore (prioritas) → JSON → fallback lokal
  * TP/mapel masih mock — nanti diganti Firestore.
  */
 
@@ -98,7 +98,6 @@ const MOCK_TP = {
   ],
 };
 
-// Fallback jika fetch JSON gagal (file:// atau offline)
 const SISWA_FALLBACK = [
   { id: "3153742941", nomorAbsen: 1, nisn: "3153742941", nama: "Abdurrahman Ar Ribery" },
   { id: "3162659714", nomorAbsen: 2, nisn: "3162659714", nama: "Abyan Nandana Khalif" },
@@ -128,6 +127,8 @@ const SISWA_FALLBACK = [
 ];
 
 let SISWA = [...SISWA_FALLBACK];
+/** Sumber data siswa: "firestore" | "json" | "fallback" */
+let SISWA_SOURCE = "fallback";
 
 // ========== STATE ==========
 const state = {
@@ -158,9 +159,7 @@ function showStep(stepId) {
 function renderBreadcrumb() {
   const el = document.getElementById("breadcrumb");
   const parts = [];
-
   parts.push(`<button type="button" onclick="goToMapel()">Mapel</button>`);
-
   if (state.mapel) {
     parts.push(`<span class="sep">›</span>`);
     parts.push(
@@ -169,7 +168,6 @@ function renderBreadcrumb() {
         : `<span class="current">${escapeHtml(state.mapel.nama)}</span>`
     );
   }
-
   if (state.tp) {
     parts.push(`<span class="sep">›</span>`);
     parts.push(
@@ -178,12 +176,10 @@ function renderBreadcrumb() {
         : `<span class="current">${escapeHtml(state.tp.kode)}</span>`
     );
   }
-
   if (state.kompetensi) {
     parts.push(`<span class="sep">›</span>`);
     parts.push(`<span class="current">Kompetensi</span>`);
   }
-
   el.innerHTML = parts.join("");
 }
 
@@ -201,18 +197,15 @@ function renderMapel() {
 function renderTP() {
   const container = document.getElementById("tp-list");
   const tps = MOCK_TP[state.mapel.id] || [];
-
   if (tps.length === 0) {
     container.innerHTML = `<p class="page-desc">Belum ada TP untuk mapel ini (mock).</p>`;
     return;
   }
-
   const byElemen = {};
   tps.forEach((tp) => {
     if (!byElemen[tp.elemen]) byElemen[tp.elemen] = [];
     byElemen[tp.elemen].push(tp);
   });
-
   let html = "";
   for (const [elemen, items] of Object.entries(byElemen)) {
     html += `<div class="elemen-group"><h2>${escapeHtml(elemen)}</h2><div class="choice-grid">`;
@@ -246,7 +239,6 @@ function renderKompetensi() {
 function renderInputNilai() {
   document.getElementById("tanggal").value = new Date().toISOString().slice(0, 10);
   document.getElementById("catatan").value = "";
-
   const list = document.getElementById("siswa-nilai-list");
   list.innerHTML = SISWA.map(
     (s) => `
@@ -260,8 +252,26 @@ function renderInputNilai() {
 
 function renderTabSiswa() {
   const panel = document.getElementById("tab-siswa");
+  const sourceLabel =
+    SISWA_SOURCE === "firestore"
+      ? "Firestore ✓"
+      : SISWA_SOURCE === "json"
+        ? "File JSON (belum di-seed ke Firestore)"
+        : "Fallback lokal";
+
   panel.innerHTML = `
-    <p class="page-desc">Kelas 5A · ${SISWA.length} siswa</p>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:1rem">
+      <p class="page-desc" style="margin:0">Kelas 5A · ${SISWA.length} siswa · Sumber: <strong>${sourceLabel}</strong></p>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-siswa">Muat ulang</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-seed-siswa" style="width:auto">
+          ${SISWA_SOURCE === "firestore" ? "Seed ulang (timpa)" : "Seed ke Firestore"}
+        </button>
+      </div>
+    </div>
+    <div class="note-box">
+      Collection Firestore: <code>siswa</code> · Document ID = NISN · Field: nomorAbsen, nisn, nama, kelas, aktif
+    </div>
     <div class="input-panel">
       <div class="siswa-nilai-list" style="max-height:none">
         ${SISWA.map(
@@ -274,6 +284,16 @@ function renderTabSiswa() {
         ).join("")}
       </div>
     </div>`;
+
+  document.getElementById("btn-refresh-siswa").addEventListener("click", async () => {
+    await loadSiswa();
+    renderTabSiswa();
+    showSuccess("Data siswa dimuat ulang.");
+  });
+
+  document.getElementById("btn-seed-siswa").addEventListener("click", async () => {
+    await handleSeedSiswa(SISWA_SOURCE === "firestore");
+  });
 }
 
 // ========== ACTIONS ==========
@@ -368,13 +388,87 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
     savedAt: new Date().toISOString(),
   };
   console.log("[MOCK] Nilai tersimpan:", payload);
-
   const key = `penilaian_mock_${payload.mapelId}_${payload.tpId}_${payload.kompetensiId}_${payload.tanggal}`;
   localStorage.setItem(key, JSON.stringify(payload));
-
   showSuccess("Nilai tersimpan (sementara di browser). Kembali ke daftar kompetensi.");
   goToKompetensi();
 });
+
+// ========== SISWA LOAD & SEED ==========
+async function loadSiswaFromJson() {
+  const res = await fetch("data/siswa-5a.json");
+  if (!res.ok) throw new Error("fetch json failed");
+  const data = await res.json();
+  return (data.siswa || []).map((s) => ({
+    id: String(s.nisn),
+    nomorAbsen: s.nomorAbsen,
+    nisn: String(s.nisn),
+    nama: s.nama,
+  }));
+}
+
+async function loadSiswa() {
+  // 1) Coba Firestore
+  try {
+    const list = await fetchSiswaFromFirestore("5A");
+    if (list.length > 0) {
+      SISWA = list;
+      SISWA_SOURCE = "firestore";
+      return;
+    }
+  } catch (e) {
+    console.warn("Firestore siswa belum siap:", e.message || e);
+  }
+
+  // 2) File JSON
+  try {
+    SISWA = await loadSiswaFromJson();
+    SISWA_SOURCE = "json";
+    return;
+  } catch (e) {
+    console.warn("Gagal muat siswa-5a.json:", e);
+  }
+
+  // 3) Fallback
+  SISWA = [...SISWA_FALLBACK];
+  SISWA_SOURCE = "fallback";
+}
+
+async function handleSeedSiswa(force) {
+  const loading = document.getElementById("loading");
+  loading.classList.add("show");
+  try {
+    let sourceList;
+    try {
+      sourceList = await loadSiswaFromJson();
+    } catch {
+      sourceList = SISWA_FALLBACK.map(({ nomorAbsen, nisn, nama }) => ({
+        nomorAbsen,
+        nisn,
+        nama,
+      }));
+    }
+
+    const result = await seedSiswaToFirestore(sourceList, { force: !!force, kelas: "5A" });
+    await loadSiswa();
+    renderTabSiswa();
+    showSuccess(
+      force
+        ? `Seed selesai: ${result.written} ditulis (mode timpa).`
+        : `Seed selesai: ${result.written} baru, ${result.skipped} sudah ada dilewati.`
+    );
+  } catch (e) {
+    console.error(e);
+    let msg = e.message || "Gagal seed ke Firestore.";
+    if (String(msg).includes("permission") || e.code === "permission-denied") {
+      msg =
+        "Izin ditolak. Pastikan sudah login dan Rules Firestore mengizinkan read/write untuk user terautentikasi.";
+    }
+    showError(msg);
+  } finally {
+    loading.classList.remove("show");
+  }
+}
 
 // ========== HELPERS ==========
 function escapeHtml(str) {
@@ -388,7 +482,7 @@ function showError(msg) {
   el.textContent = msg;
   el.classList.add("show");
   document.getElementById("success-msg").classList.remove("show");
-  setTimeout(() => el.classList.remove("show"), 4000);
+  setTimeout(() => el.classList.remove("show"), 5000);
 }
 
 function showSuccess(msg) {
@@ -396,24 +490,7 @@ function showSuccess(msg) {
   el.textContent = msg;
   el.classList.add("show");
   document.getElementById("error-msg").classList.remove("show");
-  setTimeout(() => el.classList.remove("show"), 3000);
-}
-
-async function loadSiswa() {
-  try {
-    const res = await fetch("data/siswa-5a.json");
-    if (!res.ok) throw new Error("fetch failed");
-    const data = await res.json();
-    SISWA = (data.siswa || []).map((s) => ({
-      id: s.nisn,
-      nomorAbsen: s.nomorAbsen,
-      nisn: s.nisn,
-      nama: s.nama,
-    }));
-  } catch (e) {
-    console.warn("Gagal muat siswa-5a.json, pakai fallback.", e);
-    SISWA = [...SISWA_FALLBACK];
-  }
+  setTimeout(() => el.classList.remove("show"), 4000);
 }
 
 // ========== INIT ==========
