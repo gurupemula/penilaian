@@ -68,24 +68,26 @@ async function fetchKurikulum() {
 }
 
 async function updateTP(tpId, fields) {
-  await db.collection(COL_TP).doc(tpId).update({
+  // set+merge: aman jika dokumen belum di-seed (tidak error "No document to update")
+  const data = {
     ...fields,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  });
+  };
+  await db.collection(COL_TP).doc(String(tpId)).set(data, { merge: true });
 }
 
 async function updateKompetensi(kompetensiId, fields) {
-  await db.collection(COL_KOMP).doc(kompetensiId).update({
+  await db.collection(COL_KOMP).doc(String(kompetensiId)).set({
     ...fields,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  });
+  }, { merge: true });
 }
 
 async function updateMapel(mapelId, fields) {
-  await db.collection(COL_MAPEL).doc(mapelId).update({
+  await db.collection(COL_MAPEL).doc(String(mapelId)).set({
     ...fields,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  });
+  }, { merge: true });
 }
 
 async function seedKurikulum(kurikulum, options = {}) {
@@ -151,7 +153,7 @@ async function seedKurikulum(kurikulum, options = {}) {
             updatedAt: now,
           };
           if (!kExists) kData.createdAt = now;
-          await kRef.set(kData, { merge: force });
+          await kRef.set(kData, { merge: true });
           kompN++;
         } else skipped++;
       }
