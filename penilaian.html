@@ -6,88 +6,92 @@
   <title>Penilaian - Guru Pemula</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
-  <nav class="navbar">
-    <div class="brand">Guru Pemula</div>
-    <div class="user-info">
-      <span id="user-email">...</span>
-      <button class="btn btn-secondary btn-sm" onclick="logout()">Keluar</button>
-    </div>
-  </nav>
-
-  <div class="container container-wide">
-    <a href="dashboard.html" class="back-link">← Dashboard</a>
-
-    <h1 class="page-title">Penilaian</h1>
-    <p class="page-desc">Input nilai: Mapel → TP → Kompetensi → Nilai. Kelola TP & bobot di tab TP.</p>
-
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="input">Input</button>
-      <button class="tab-btn" data-tab="rekap">Rekap</button>
-      <button class="tab-btn" data-tab="siswa">Siswa</button>
-      <button class="tab-btn" data-tab="tp">TP</button>
-    </div>
-
-    <div id="success-msg" class="success-msg"></div>
-    <div id="error-msg" class="error-msg"></div>
-
-    <div id="tab-input" class="tab-panel">
-      <div class="note-box">
-        Seed <strong>siswa</strong> (tab Siswa) dan <strong>kurikulum</strong> (tab TP) ke Firestore agar data persisten. Nilai masih disimpan sementara di browser.
+<body class="app-body">
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand"><a href="dashboard.html">Guru Pemula</a></div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item active" data-tab="input"><span class="nav-ico">✎</span> Input Nilai</button>
+        <button type="button" class="nav-item" data-tab="rekap"><span class="nav-ico">▦</span> Rekap</button>
+        <button type="button" class="nav-item" data-tab="siswa"><span class="nav-ico">☰</span> Siswa</button>
+        <button type="button" class="nav-item" data-tab="tp"><span class="nav-ico">☰</span> Kurikulum</button>
+      </nav>
+      <div class="sidebar-foot">
+        <a href="dashboard.html" class="nav-item link">← Dashboard</a>
+        <button type="button" class="nav-item link" onclick="logout()">Keluar</button>
+        <div class="sidebar-user" id="user-email">...</div>
       </div>
+    </aside>
 
-      <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="app-main">
+      <header class="app-topbar">
+        <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Menu">☰</button>
+        <h1 class="topbar-title" id="topbar-title">Input Nilai</h1>
+        <div class="topbar-actions" id="topbar-actions"></div>
+      </header>
 
-      <div id="step-mapel" class="step-section active">
-        <h2 class="page-desc" style="margin-bottom:1rem">1. Pilih Mata Pelajaran</h2>
-        <div class="choice-grid" id="mapel-list"></div>
-      </div>
+      <div class="app-content">
+        <div id="success-msg" class="flash flash-ok"></div>
+        <div id="error-msg" class="flash flash-err"></div>
 
-      <div id="step-tp" class="step-section">
-        <h2 class="page-desc" style="margin-bottom:1rem">2. Pilih Tujuan Pembelajaran (TP)</h2>
-        <div id="tp-list"></div>
-      </div>
-
-      <div id="step-kompetensi" class="step-section">
-        <h2 class="page-desc" style="margin-bottom:1rem">3. Pilih Kompetensi</h2>
-        <div class="choice-grid" id="kompetensi-list"></div>
-      </div>
-
-      <div id="step-nilai" class="step-section">
-        <h2 class="page-desc" style="margin-bottom:1rem">4. Isi Nilai Siswa</h2>
-        <div class="input-panel">
-          <div class="input-meta">
-            <div class="form-group">
-              <label for="tanggal">Tanggal penilaian</label>
-              <input type="date" id="tanggal" />
+        <section id="tab-input" class="tab-panel">
+          <div class="filter-bar">
+            <div class="ff">
+              <label>Mapel</label>
+              <select id="sel-mapel"></select>
             </div>
-            <div class="form-group">
-              <label for="catatan">Catatan (opsional)</label>
-              <input type="text" id="catatan" placeholder="Mis. Ulangan harian 1" />
+            <div class="ff">
+              <label>TP</label>
+              <select id="sel-tp" disabled><option value="">—</option></select>
+            </div>
+            <div class="ff ff-grow">
+              <label>Kompetensi</label>
+              <select id="sel-kompetensi" disabled><option value="">—</option></select>
             </div>
           </div>
-          <div class="siswa-nilai-list" id="siswa-nilai-list"></div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-primary" id="btn-simpan" style="width:auto">Simpan Nilai</button>
-            <button type="button" class="btn btn-secondary" id="btn-batal" style="width:auto">Batal</button>
+
+          <div id="input-workspace" class="hidden">
+            <div class="toolbar-row">
+              <div class="ff">
+                <label>Tanggal</label>
+                <input type="date" id="tanggal" />
+              </div>
+              <div class="ff ff-grow">
+                <label>Catatan</label>
+                <input type="text" id="catatan" placeholder="Opsional" />
+              </div>
+              <button type="button" class="btn btn-primary" id="btn-simpan">Simpan nilai</button>
+            </div>
+            <div class="table-scroll">
+              <table class="sheet">
+                <thead>
+                  <tr>
+                    <th class="w-abs">No</th>
+                    <th>Nama</th>
+                    <th class="w-nilai">Nilai</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-nilai"></tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          <div id="input-empty" class="empty-hint">
+            Pilih Mapel → TP → Kompetensi pada filter di atas, lalu isi nilai seperti spreadsheet.
+          </div>
+        </section>
+
+        <section id="tab-rekap" class="tab-panel" hidden>
+          <div class="empty-hint">Rekap matrix (siswa × TP) menyusul setelah nilai tersimpan di Firestore.</div>
+        </section>
+
+        <section id="tab-siswa" class="tab-panel" hidden></section>
+        <section id="tab-tp" class="tab-panel" hidden></section>
       </div>
     </div>
-
-    <div id="tab-rekap" class="tab-panel" style="display:none">
-      <div class="placeholder-box">
-        <h2>Rekap</h2>
-        <p>Tabel siswa × TP akan ditampilkan di sini.</p>
-      </div>
-    </div>
-    <div id="tab-siswa" class="tab-panel" style="display:none"></div>
-    <div id="tab-tp" class="tab-panel" style="display:none"></div>
   </div>
 
-  <div class="loading-overlay" id="loading">
-    <div class="spinner"></div>
-  </div>
+  <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -98,9 +102,6 @@
   <script src="js/tp-db.js"></script>
   <script src="js/penilaian-calc.js"></script>
   <script src="js/penilaian-ui.js"></script>
-  <script>
-    requireAuth();
-    showUserEmail();
-  </script>
+  <script>requireAuth(); showUserEmail();</script>
 </body>
 </html>
