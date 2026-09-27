@@ -4,9 +4,9 @@ Aplikasi web pribadi untuk membantu mengelola pekerjaan sehari-hari (penilaian, 
 
 **Hanya untuk penggunaan pribadi** — tidak ada pendaftaran publik. Akun dibuat manual di Firebase Console.
 
-## Fitur yang direncanakan
+## Fitur
 
-- **Penilaian** – Input dan kelola nilai siswa
+- **Penilaian** – Input dan kelola nilai siswa (berdasarkan mekanisme aplikasi offline Kelas 5A)
 - Fitur lain akan ditambahkan kemudian
 
 ## Teknologi
@@ -14,6 +14,15 @@ Aplikasi web pribadi untuk membantu mengelola pekerjaan sehari-hari (penilaian, 
 - HTML, CSS, JavaScript
 - Firebase Authentication (login Email/Password)
 - Firebase Firestore (database)
+
+## Dokumentasi
+
+| Dokumen | Isi |
+|---------|-----|
+| [CHANGELOG.md](CHANGELOG.md) | Riwayat perubahan |
+| [docs/MEKANISME_PENILAIAN.md](docs/MEKANISME_PENILAIAN.md) | Cara kerja penilaian (acuan offline) |
+| [docs/ANTI_REGRESSION.md](docs/ANTI_REGRESSION.md) | Aturan yang wajib tidak rusak |
+| [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | Rencana struktur Firestore |
 
 ## Cara Menjalankan
 
@@ -29,7 +38,7 @@ Aplikasi web pribadi untuk membantu mengelola pekerjaan sehari-hari (penilaian, 
 
 ### 2. Firestore Database
 - **Firestore Database** → Create database (pilih lokasi terdekat)
-- Collection boleh dibuat nanti sesuai kebutuhan fitur
+- Collection dibuat sesuai [DATA_MODEL.md](docs/DATA_MODEL.md)
 
 ### 3. Security Rules (sementara)
 
@@ -44,21 +53,24 @@ service cloud.firestore {
 }
 ```
 
-> Rules di atas hanya untuk development. Karena hanya kamu yang login, sudah cukup aman untuk penggunaan pribadi.
-
 ## Struktur Folder
 
 ```
-├── index.html          # Halaman login
-├── dashboard.html      # Halaman utama
-├── penilaian.html      # Fitur penilaian
-├── css/
-│   └── style.css
-└── js/
-    ├── firebase-config.js
-    └── auth.js
+├── index.html
+├── dashboard.html
+├── penilaian.html
+├── css/style.css
+├── js/
+│   ├── firebase-config.js
+│   └── auth.js
+├── docs/
+│   ├── MEKANISME_PENILAIAN.md
+│   ├── ANTI_REGRESSION.md
+│   └── DATA_MODEL.md
+├── CHANGELOG.md
+└── README.md
 ```
 
 ## Catatan
 
-Project ini masih dalam tahap awal. Fitur penilaian akan dikembangkan secara bertahap.
+Project ini masih dalam tahap awal. Fitur penilaian dikembangkan secara bertahap dengan acuan aplikasi offline dan dijaga anti-regresi.
