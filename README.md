@@ -1,6 +1,8 @@
-# Penilaian - Aplikasi Guru Pemula
+# Guru Pemula
 
-Aplikasi web sederhana untuk membantu guru dalam mengelola pekerjaan sehari-hari.
+Aplikasi web pribadi untuk membantu mengelola pekerjaan sehari-hari (penilaian, dll).
+
+**Hanya untuk penggunaan pribadi** — tidak ada pendaftaran publik. Akun dibuat manual di Firebase Console.
 
 ## Fitur yang direncanakan
 
@@ -10,26 +12,26 @@ Aplikasi web sederhana untuk membantu guru dalam mengelola pekerjaan sehari-hari
 ## Teknologi
 
 - HTML, CSS, JavaScript
-- Firebase Authentication (login)
+- Firebase Authentication (login Email/Password)
 - Firebase Firestore (database)
 
 ## Cara Menjalankan
 
-1. Buka `index.html` di browser (atau deploy ke hosting seperti Firebase Hosting / GitHub Pages)
-2. Login menggunakan akun yang sudah didaftarkan di Firebase Authentication
+1. Deploy atau buka lewat server lokal / GitHub Pages / Firebase Hosting
+2. Login menggunakan akun yang sudah dibuat di Firebase Authentication
 
-## Setup Firebase yang perlu dilakukan
+## Setup Firebase
 
-1. **Authentication**
-   - Buka [Firebase Console](https://console.firebase.google.com/) → project `gurupemula-6315d`
-   - Pilih **Authentication** → **Sign-in method**
-   - Aktifkan **Email/Password**
+### 1. Authentication
+- Buka [Firebase Console](https://console.firebase.google.com/) → project `gurupemula-6315d`
+- **Authentication** → **Sign-in method** → aktifkan **Email/Password**
+- **Users** → **Add user** → buat akun dengan email & password kamu
 
-2. **Firestore Database**
-   - Buat database Firestore (mode production atau test)
-   - Buat collection `users` (opsional, untuk data profil)
+### 2. Firestore Database
+- **Firestore Database** → Create database (pilih lokasi terdekat)
+- Collection boleh dibuat nanti sesuai kebutuhan fitur
 
-3. **Security Rules** (contoh sementara)
+### 3. Security Rules (sementara)
 
 ```
 rules_version = '2';
@@ -42,7 +44,7 @@ service cloud.firestore {
 }
 ```
 
-> **Peringatan:** Rules di atas hanya untuk development. Nanti harus diperketat sesuai kebutuhan.
+> Rules di atas hanya untuk development. Karena hanya kamu yang login, sudah cukup aman untuk penggunaan pribadi.
 
 ## Struktur Folder
 
