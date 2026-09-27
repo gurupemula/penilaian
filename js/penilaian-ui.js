@@ -222,10 +222,11 @@ function renderTabSiswa() {
 function renderTabTP() {
   const panel = document.getElementById("tab-tp");
   if (!panel) return;
-  const src = KURIKULUM_SOURCE === "firestore" ? "Firestore ✓" : KURIKULUM_SOURCE === "json" ? "JSON" : "Kosong";
+  const src = KURIKULUM_SOURCE === "firestore" ? "Firestore ✓" : KURIKULUM_SOURCE === "json" ? "JSON (belum di Firestore)" : "Kosong";
   document.getElementById("topbar-actions").innerHTML = `
-    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp">Muat ulang</button>
-    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp">${KURIKULUM_SOURCE === "firestore" ? "Seed ulang" : "Seed Firestore"}</button>`;
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp" title="Ambil ulang data dari Firestore">Muat ulang</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp" title="Isi dokumen yang belum ada (tidak menimpa yang sudah diedit)">Seed (isi kosong)</button>
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-seed-force-tp" title="HATI-HATI: menimpa semua dengan default JSON">Seed ulang (timpa)</button>`;
   const mapelOpts = KURIKULUM.map((m) => `<option value="${m.id}">${escapeHtml(m.nama)}</option>`).join("");
   if (!state.tpTabMapelId && KURIKULUM.length) state.tpTabMapelId = KURIKULUM[0].id;
   const mapel = KURIKULUM.find((m) => m.id === state.tpTabMapelId) || KURIKULUM[0];
@@ -238,7 +239,7 @@ function renderTabTP() {
     bc.s2 = cekTotalBobot(tps.map((t) => ({ bobot: Number(t.bobot2) || 0 })));
   }
   panel.innerHTML = `
-    <p class="page-desc">Kurikulum 5A · <strong>${src}</strong> · Bobot 0 = tidak dipakai semester itu</p>
+    <p class="page-desc">Kurikulum 5A · sumber: <strong>${src}</strong> · <em>Simpan</em> = permanen ke Firestore · <em>Seed isi kosong</em> tidak menimpa edit · <em>Seed ulang</em> mengembalikan default</p>
     <div class="filters">
       <div class="ff"><label>Mapel</label><select id="sel-tp-mapel">${mapelOpts}</select></div>
       <div class="ff" style="justify-content:flex-end;gap:.35rem">
@@ -257,11 +258,16 @@ function renderTabTP() {
           <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot2" value="${tp.bobot2 ?? 0}" title="Bobot semester 2 (0 = tidak dipakai)" class="${(tp.bobot2 ?? 0) == 0 ? "is-zero" : ""}" /></td>
           <td class="w-act"><button type="button" class="btn btn-primary btn-sm btn-save-tp">Simpan</button></td>
         </tr>`).join("")}</tbody></table></div>
-    <p class="hint">Bobot 0% = tidak dipakai di semester tersebut. Total ideal S1/S2 ≈ 100%. Pill di atas berubah langsung saat angka diubah.</p>`;
+    <p class="hint">Ubah bobot → pill S1/S2 berubah langsung. Klik Simpan per baris agar permanen. Jangan pakai Seed ulang kecuali ingin reset ke default.</p>`;
   document.getElementById("sel-tp-mapel").value = state.tpTabMapelId || (mapel && mapel.id) || "";
   document.getElementById("sel-tp-mapel").onchange = (e) => { state.tpTabMapelId = e.target.value; renderTabTP(); };
-  document.getElementById("btn-refresh-tp").onclick = async () => { await loadKurikulum(); renderTabTP(); showSuccess("Kurikulum dimuat ulang."); };
-  document.getElementById("btn-seed-tp").onclick = () => handleSeedTP(KURIKULUM_SOURCE === "firestore");
+  document.getElementById("btn-refresh-tp").onclick = async () => {
+    await loadKurikulum();
+    renderTabTP();
+    showSuccess(KURIKULUM_SOURCE === "firestore" ? "Dimuat dari Firestore." : "Dimuat dari JSON (Firestore kosong).");
+  };
+  document.getElementById("btn-seed-tp").onclick = () => handleSeedTP(false);
+  document.getElementById("btn-seed-force-tp").onclick = () => handleSeedTP(true);
   function refreshBobotPills() {
     let s1 = 0, s2 = 0;
     panel.querySelectorAll('[data-field="bobot1"]').forEach((el) => { s1 += Number(el.value) || 0; });
@@ -300,6 +306,9 @@ function renderTabTP() {
         const tp = m && (m.tp || []).find((t) => t.id === tpId);
         const payload = {
           mapelId: (m && m.id) || state.tpTabMapelId || "",
+          mapelNama: m && m.nama,
+          mapelKode: m && m.kode,
+          mapelUrutan: m && m.urutan,
           bobot1, bobot2,
           bobot: bobot1 || bobot2,
           semester,
@@ -313,12 +322,13 @@ function renderTabTP() {
         }
         if (typeof updateTP === "function") await updateTP(tpId, payload);
         if (tp) { tp.bobot1 = bobot1; tp.bobot2 = bobot2; tp.bobot = bobot1 || bobot2; tp.semester = semester; tp.tujuan = tujuan; }
-        showSuccess("TP disimpan di Firestore.");
+        KURIKULUM_SOURCE = "firestore";
+        showSuccess("TP disimpan permanen di Firestore. Refresh aman — data tidak hilang.");
         refreshBobotPills();
       } catch (e) {
         const msg = e.message || "Gagal simpan TP.";
         if (/No document to update/i.test(msg) || e.code === "not-found") {
-          showError("Dokumen TP belum ada di Firestore. Klik Seed Firestore dulu, lalu simpan lagi.");
+          showError("Dokumen TP belum ada. Klik Seed (isi kosong) dulu, lalu simpan lagi.");
         } else {
           showError(msg);
         }
@@ -333,7 +343,7 @@ function cekBobotSemester(tpList) {
 }
 function formatFsError(e) {
   if (!e) return "Error tidak diketahui";
-  if (e.code === "permission-denied") return "Izin Firestore ditolak. Periksa rules (collection penilaian).";
+  if (e.code === "permission-denied") return "Izin Firestore ditolak. Periksa rules.";
   return e.message || String(e);
 }
 function short(s, n) { s = String(s || ""); return s.length <= n ? s : s.slice(0, n - 1) + "…"; }
@@ -403,12 +413,30 @@ async function handleSeedSiswa(force) {
 }
 
 async function handleSeedTP(force) {
-  if (typeof seedTP !== "function" && typeof seedKurikulum !== "function") return showError("seed kurikulum tidak tersedia.");
+  if (typeof seedTP !== "function" && typeof seedKurikulum !== "function") {
+    return showError("seed kurikulum tidak tersedia.");
+  }
+  if (force) {
+    const ok = confirm(
+      "SEED ULANG akan MENIMPA semua bobot/tujuan yang sudah Anda ubah di Firestore\n" +
+      "dengan nilai DEFAULT dari file JSON.\n\n" +
+      "Perubahan yang sudah disimpan akan hilang.\n\nLanjutkan?"
+    );
+    if (!ok) return;
+  }
   try {
-    if (typeof seedTP === "function") await seedTP(force);
-    else await seedKurikulum(force);
-    await loadKurikulum(); renderTabTP(); showSuccess("Seed kurikulum selesai.");
-  } catch (e) { showError(formatFsError(e)); }
+    const r = typeof seedTP === "function" ? await seedTP(force) : await seedKurikulum(force);
+    await loadKurikulum();
+    renderTabTP();
+    const written = r ? `mapel ${r.mapel || 0}, tp ${r.tp || 0}, lewati ${r.skipped || 0}` : "";
+    showSuccess(
+      force
+        ? `Seed ulang selesai (${written}). Data diganti dengan default JSON.`
+        : `Seed selesai (${written}). Dokumen yang sudah ada tidak diubah.`
+    );
+  } catch (e) {
+    showError(formatFsError(e));
+  }
 }
 
 (async function init() {
