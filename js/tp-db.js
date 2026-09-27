@@ -8,7 +8,6 @@ const COL_TP = "tp";
 const COL_KOMP = "kompetensi";
 
 function normalizeTP(tp) {
-  // backward compat: single bobot → bobot1/bobot2
   if (tp.bobot1 == null && tp.bobot2 == null && tp.bobot != null) {
     const b = Number(tp.bobot) || 0;
     const sem = tp.semester || "kedua";
@@ -48,7 +47,29 @@ async function fetchKompetensiByTP(tpId) {
 }
 
 async function fetchKurikulumLengkap() {
-  const mapelList = await fetchMapel();
+  let mapelList = await fetchMapel();
+
+  // Jika mapel kosong tapi collection tp ada data (hasil simpan partial),
+  // rekonstruksi mapel dari field mapelId di dokumen tp.
+  if (!mapelList.length) {
+    const tpSnap = await db.collection(COL_TP).get();
+    if (tpSnap.empty) return [];
+    const byMapel = {};
+    tpSnap.docs.forEach((d) => {
+      const data = d.data();
+      const mid = data.mapelId || "unknown";
+      if (!byMapel[mid]) byMapel[mid] = [];
+      byMapel[mid].push(normalizeTP({ id: d.id, ...data }));
+    });
+    mapelList = Object.keys(byMapel).map((mid, i) => ({
+      id: mid,
+      nama: mid.toUpperCase(),
+      kode: mid.toUpperCase(),
+      urutan: i + 1,
+      _fromTpOnly: true,
+    }));
+  }
+
   const result = [];
   for (const m of mapelList) {
     const tps = await fetchTPByMapel(m.id);
@@ -67,27 +88,53 @@ async function fetchKurikulum() {
   return fetchKurikulumLengkap();
 }
 
+/**
+ * Simpan TP. set+merge agar tidak error jika dokumen belum ada.
+ * Juga memastikan dokumen mapel induk ada, supaya load setelah refresh
+ * tidak jatuh ke JSON default.
+ */
 async function updateTP(tpId, fields) {
-  // set+merge: aman jika dokumen belum di-seed (tidak error "No document to update")
-  const data = {
-    ...fields,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  };
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const data = { ...fields, updatedAt: now };
   await db.collection(COL_TP).doc(String(tpId)).set(data, { merge: true });
+
+  const mapelId = fields.mapelId;
+  if (mapelId) {
+    const mRef = db.collection(COL_MAPEL).doc(String(mapelId));
+    const mSnap = await mRef.get();
+    if (!mSnap.exists) {
+      await mRef.set(
+        {
+          nama: fields.mapelNama || String(mapelId).toUpperCase(),
+          kode: fields.mapelKode || String(mapelId).toUpperCase(),
+          urutan: fields.mapelUrutan || 0,
+          createdAt: now,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+    }
+  }
 }
 
 async function updateKompetensi(kompetensiId, fields) {
-  await db.collection(COL_KOMP).doc(String(kompetensiId)).set({
-    ...fields,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
+  await db.collection(COL_KOMP).doc(String(kompetensiId)).set(
+    {
+      ...fields,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 async function updateMapel(mapelId, fields) {
-  await db.collection(COL_MAPEL).doc(String(mapelId)).set({
-    ...fields,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  }, { merge: true });
+  await db.collection(COL_MAPEL).doc(String(mapelId)).set(
+    {
+      ...fields,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 async function seedKurikulum(kurikulum, options = {}) {
@@ -111,7 +158,7 @@ async function seedKurikulum(kurikulum, options = {}) {
       if (m.kelompokBobot) mapelData.kelompokBobot = m.kelompokBobot;
       if (m.catatanKompetensi) mapelData.catatanKompetensi = m.catatanKompetensi;
       if (!mapelExists) mapelData.createdAt = now;
-      await mapelRef.set(mapelData, { merge: force });
+      await mapelRef.set(mapelData, { merge: true });
       mapelN++;
     } else skipped++;
 
@@ -129,7 +176,7 @@ async function seedKurikulum(kurikulum, options = {}) {
           tujuan: tp.tujuan || "",
           bobot1: n.bobot1,
           bobot2: n.bobot2,
-          bobot: n.bobot1 || n.bobot2, // legacy
+          bobot: n.bobot1 || n.bobot2,
           semester: tp.semester || "kedua",
           urutan: tp.urutan || tpUrutan,
           jp: tp.jp || 0,
@@ -137,7 +184,7 @@ async function seedKurikulum(kurikulum, options = {}) {
         };
         if (tp.cabang) tpData.cabang = tp.cabang;
         if (!tpExists) tpData.createdAt = now;
-        await tpRef.set(tpData, { merge: force });
+        await tpRef.set(tpData, { merge: true });
         tpN++;
       } else skipped++;
 
@@ -163,7 +210,9 @@ async function seedKurikulum(kurikulum, options = {}) {
 }
 
 /**
- * seedTP(force) — alias UI: muat JSON lalu seedKurikulum
+ * seedTP(force)
+ * force=false → hanya isi dokumen yang BELUM ada (aman, tidak menimpa bobot yang sudah diedit)
+ * force=true  → timpa semua dengan nilai default dari JSON (berbahaya)
  */
 async function seedTP(force = false) {
   const res = await fetch("data/kurikulum-5a.json");
