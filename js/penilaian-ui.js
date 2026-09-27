@@ -60,7 +60,7 @@ function switchTab(tab) {
   if (actions) actions.innerHTML = "";
   if (tab === "siswa") renderTabSiswa();
   if (tab === "tp") renderTabTP();
-  if (tab === "rekap") renderTabRekap();
+  if (tab === "rekap" && typeof renderTabRekap === "function") renderTabRekap();
 }
 
 function fillMapelSelect() {
@@ -116,41 +116,25 @@ async function renderNilaiSheet() {
   const cat = document.getElementById("catatan");
   const tbody = document.getElementById("tbody-nilai");
   if (!tbody) return;
-
   if (tgl && !tgl.value) tgl.value = new Date().toISOString().slice(0, 10);
   const tanggal = tgl ? tgl.value : new Date().toISOString().slice(0, 10);
-
   let nilaiMap = {};
   let catatanLama = "";
   if (typeof getPenilaian === "function" && state.mapelId && state.tpId && state.kompetensiId && tanggal) {
     try {
       const doc = await getPenilaian(state.mapelId, state.tpId, state.kompetensiId, tanggal);
-      if (doc) {
-        nilaiMap = doc.nilai || {};
-        catatanLama = doc.catatan || "";
-      }
-    } catch (e) {
-      console.warn("getPenilaian", e);
-    }
+      if (doc) { nilaiMap = doc.nilai || {}; catatanLama = doc.catatan || ""; }
+    } catch (e) { console.warn("getPenilaian", e); }
   }
   if (cat) cat.value = catatanLama;
-
   tbody.innerHTML = SISWA.map((s) => {
     const v = nilaiMap[s.id] != null ? nilaiMap[s.id] : nilaiMap[s.nisn] != null ? nilaiMap[s.nisn] : "";
-    return `
-    <tr>
-      <td class="num">${s.nomorAbsen}</td>
-      <td>${escapeHtml(s.nama)}</td>
-      <td class="w-nilai"><input type="number" min="0" max="100" step="1" data-siswa="${s.id}" value="${v === "" ? "" : v}" /></td>
-    </tr>`;
+    return `<tr><td class="num">${s.nomorAbsen}</td><td>${escapeHtml(s.nama)}</td><td class="w-nilai"><input type="number" min="0" max="100" step="1" data-siswa="${s.id}" value="${v === "" ? "" : v}" /></td></tr>`;
   }).join("");
-
   const info = document.getElementById("nilai-session-info");
   if (info) {
     const n = Object.keys(nilaiMap).length;
-    info.textContent = n
-      ? `${n} nilai sudah tersimpan di Firestore untuk tanggal ini.`
-      : "Belum ada nilai tersimpan untuk tanggal ini.";
+    info.textContent = n ? `${n} nilai sudah tersimpan di Firestore untuk tanggal ini.` : "Belum ada nilai tersimpan untuk tanggal ini.";
   }
 }
 
@@ -179,45 +163,22 @@ document.getElementById("btn-simpan")?.addEventListener("click", async () => {
     const v = inp.value.trim();
     if (v === "") return;
     const n = Number(v);
-    if (isNaN(n) || n < 0 || n > 100) {
-      bad = inp.closest("tr").querySelector(".num").textContent;
-      return;
-    }
-    nilaiMap[inp.dataset.siswa] = n;
-    ada = true;
+    if (isNaN(n) || n < 0 || n > 100) { bad = inp.closest("tr").querySelector(".num").textContent; return; }
+    nilaiMap[inp.dataset.siswa] = n; ada = true;
   });
   if (bad) return showError(`Nilai 0–100 (baris ${bad})`);
   if (!ada) return showError("Isi minimal satu nilai.");
   if (!tanggal) return showError("Tanggal wajib.");
   if (!state.mapelId || !state.tpId || !state.kompetensiId) return showError("Pilih mapel, TP, dan kompetensi.");
-
   const btn = document.getElementById("btn-simpan");
   if (btn) { btn.disabled = true; btn.textContent = "Menyimpan…"; }
-
   try {
-    if (typeof savePenilaian !== "function") {
-      throw new Error("Modul nilai-db belum dimuat.");
-    }
-    const result = await savePenilaian({
-      mapelId: state.mapelId,
-      tpId: state.tpId,
-      kompetensiId: state.kompetensiId,
-      tanggal,
-      catatan,
-      nilai: nilaiMap,
-      merge: true,
-    });
-    showSuccess(
-      result.isNew
-        ? `Nilai tersimpan di Firestore (${result.written} siswa).`
-        : `Nilai diperbarui di Firestore (${result.written} diisi, total ${result.count} siswa).`
-    );
+    if (typeof savePenilaian !== "function") throw new Error("Modul nilai-db belum dimuat.");
+    const result = await savePenilaian({ mapelId: state.mapelId, tpId: state.tpId, kompetensiId: state.kompetensiId, tanggal, catatan, nilai: nilaiMap, merge: true });
+    showSuccess(result.isNew ? `Nilai tersimpan di Firestore (${result.written} siswa).` : `Nilai diperbarui di Firestore (${result.written} diisi, total ${result.count} siswa).`);
     await renderNilaiSheet();
-  } catch (e) {
-    showError(formatFsError(e));
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "Simpan nilai"; }
-  }
+  } catch (e) { showError(formatFsError(e)); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = "Simpan nilai"; } }
 });
 
 function renderTabSiswa() {
@@ -229,53 +190,29 @@ function renderTabSiswa() {
     <button type="button" class="btn btn-primary btn-sm" id="btn-seed-siswa">${SISWA_SOURCE === "firestore" ? "Seed ulang" : "Seed Firestore"}</button>`;
   panel.innerHTML = `
     <p class="page-desc">5A · ${SISWA.length} siswa · <strong>${src}</strong> · edit sel lalu klik Simpan</p>
-    <div class="table-scroll">
-      <table class="sheet">
-        <thead><tr>
-          <th class="w-abs">No</th><th>Nama</th><th class="w-nis">NISN</th><th class="w-nis">NIS</th>
-          <th class="w-jk">JK</th><th class="w-ttl">Tempat, Tgl lahir</th><th>Alamat</th><th class="w-act"></th>
-        </tr></thead>
-        <tbody>
-          ${SISWA.map((s) => `
-            <tr data-nisn="${escapeHtml(s.nisn)}">
-              <td class="w-abs"><input type="number" min="1" data-f="nomorAbsen" value="${s.nomorAbsen}" /></td>
-              <td><input type="text" data-f="nama" value="${escapeHtml(s.nama)}" /></td>
-              <td class="cell-muted">${escapeHtml(s.nisn)}</td>
-              <td class="w-nis"><input type="text" data-f="nis" value="${escapeHtml(s.nis)}" /></td>
-              <td class="w-jk"><select data-f="jenisKelamin">
-                <option value="L" ${s.jenisKelamin === "L" ? "selected" : ""}>L</option>
-                <option value="P" ${s.jenisKelamin === "P" ? "selected" : ""}>P</option>
-              </select></td>
-              <td class="w-ttl">
-                <input type="text" data-f="tempatLahir" value="${escapeHtml(s.tempatLahir)}" placeholder="Tempat" style="margin-bottom:2px" />
-                <input type="date" data-f="tanggalLahir" value="${escapeHtml(s.tanggalLahir)}" />
-              </td>
-              <td><input type="text" data-f="alamat" value="${escapeHtml(s.alamat)}" /></td>
-              <td class="w-act"><button type="button" class="btn btn-primary btn-sm btn-save-siswa">Simpan</button></td>
-            </tr>`).join("")}
-        </tbody>
-      </table>
-    </div>`;
+    <div class="table-scroll"><table class="sheet">
+      <thead><tr><th class="w-abs">No</th><th>Nama</th><th class="w-nis">NISN</th><th class="w-nis">NIS</th><th class="w-jk">JK</th><th class="w-ttl">Tempat, Tgl lahir</th><th>Alamat</th><th class="w-act"></th></tr></thead>
+      <tbody>${SISWA.map((s) => `
+        <tr data-nisn="${escapeHtml(s.nisn)}">
+          <td class="w-abs"><input type="number" min="1" data-f="nomorAbsen" value="${s.nomorAbsen}" /></td>
+          <td><input type="text" data-f="nama" value="${escapeHtml(s.nama)}" /></td>
+          <td class="cell-muted">${escapeHtml(s.nisn)}</td>
+          <td class="w-nis"><input type="text" data-f="nis" value="${escapeHtml(s.nis)}" /></td>
+          <td class="w-jk"><select data-f="jenisKelamin"><option value="L" ${s.jenisKelamin === "L" ? "selected" : ""}>L</option><option value="P" ${s.jenisKelamin === "P" ? "selected" : ""}>P</option></select></td>
+          <td class="w-ttl"><input type="text" data-f="tempatLahir" value="${escapeHtml(s.tempatLahir)}" placeholder="Tempat" style="margin-bottom:2px" /><input type="date" data-f="tanggalLahir" value="${escapeHtml(s.tanggalLahir)}" /></td>
+          <td><input type="text" data-f="alamat" value="${escapeHtml(s.alamat)}" /></td>
+          <td class="w-act"><button type="button" class="btn btn-primary btn-sm btn-save-siswa">Simpan</button></td>
+        </tr>`).join("")}</tbody></table></div>`;
   document.getElementById("btn-refresh-siswa").onclick = async () => { await loadSiswa(); renderTabSiswa(); showSuccess("Siswa dimuat ulang."); };
   document.getElementById("btn-seed-siswa").onclick = () => handleSeedSiswa(SISWA_SOURCE === "firestore");
   panel.querySelectorAll(".btn-save-siswa").forEach((btn) => {
     btn.onclick = async () => {
-      const tr = btn.closest("tr");
-      const nisn = tr.dataset.nisn;
-      const fields = {
-        nomorAbsen: Number(tr.querySelector('[data-f="nomorAbsen"]').value) || 0,
-        nama: tr.querySelector('[data-f="nama"]').value.trim(),
-        nis: tr.querySelector('[data-f="nis"]').value.trim(),
-        jenisKelamin: tr.querySelector('[data-f="jenisKelamin"]').value,
-        tempatLahir: tr.querySelector('[data-f="tempatLahir"]').value.trim(),
-        tanggalLahir: tr.querySelector('[data-f="tanggalLahir"]').value,
-        alamat: tr.querySelector('[data-f="alamat"]').value.trim(),
-      };
+      const tr = btn.closest("tr"); const nisn = tr.dataset.nisn;
+      const fields = { nomorAbsen: Number(tr.querySelector('[data-f="nomorAbsen"]').value) || 0, nama: tr.querySelector('[data-f="nama"]').value.trim(), nis: tr.querySelector('[data-f="nis"]').value.trim(), jenisKelamin: tr.querySelector('[data-f="jenisKelamin"]').value, tempatLahir: tr.querySelector('[data-f="tempatLahir"]').value.trim(), tanggalLahir: tr.querySelector('[data-f="tanggalLahir"]').value, alamat: tr.querySelector('[data-f="alamat"]').value.trim() };
       if (!fields.nama) return showError("Nama wajib.");
       try {
         if (SISWA_SOURCE === "firestore" && typeof updateSiswa === "function") await updateSiswa(nisn, fields);
-        const s = SISWA.find((x) => x.nisn === nisn);
-        if (s) Object.assign(s, fields);
+        const s = SISWA.find((x) => x.nisn === nisn); if (s) Object.assign(s, fields);
         showSuccess(`Siswa ${fields.nama} disimpan.`);
       } catch (e) { showError(e.message || "Gagal simpan siswa."); }
     };
@@ -295,6 +232,7 @@ function renderTabTP() {
   const tps = (mapel && mapel.tp) || [];
   let bc = { s1: { total: 0, ok: true }, s2: { total: 0, ok: true } };
   if (typeof cekBobotSemester === "function") bc = cekBobotSemester(tps);
+  else if (typeof cekBobotPerSemester === "function") bc = cekBobotPerSemester(tps);
   else if (typeof cekTotalBobot === "function") {
     bc.s1 = cekTotalBobot(tps.map((t) => ({ bobot: Number(t.bobot1) || 0 })));
     bc.s2 = cekTotalBobot(tps.map((t) => ({ bobot: Number(t.bobot2) || 0 })));
@@ -302,42 +240,48 @@ function renderTabTP() {
   panel.innerHTML = `
     <p class="page-desc">Kurikulum 5A · <strong>${src}</strong> · Bobot 0 = tidak dipakai semester itu</p>
     <div class="filters">
-      <div class="ff"><label>Mapel</label>
-        <select id="sel-tp-mapel">${mapelOpts}</select></div>
+      <div class="ff"><label>Mapel</label><select id="sel-tp-mapel">${mapelOpts}</select></div>
       <div class="ff" style="justify-content:flex-end;gap:.35rem">
-        <span class="bobot-pill ${bc.s1.ok ? "ok" : "warn"}">S1 ${bc.s1.total.toFixed(0)}%</span>
-        <span class="bobot-pill ${bc.s2.ok ? "ok" : "warn"}">S2 ${bc.s2.total.toFixed(0)}%</span>
+        <span class="bobot-pill bobot-pill-s1 ${bc.s1.ok ? "ok" : "warn"}">S1 ${bc.s1.total.toFixed(0)}%</span>
+        <span class="bobot-pill bobot-pill-s2 ${bc.s2.ok ? "ok" : "warn"}">S2 ${bc.s2.total.toFixed(0)}%</span>
       </div>
     </div>
-    <div class="table-scroll">
-      <table class="sheet">
-        <thead><tr>
-          <th class="w-kode">Kode</th><th class="w-elemen">Elemen</th>
-          <th class="col-tujuan">Tujuan Pembelajaran</th>
-          <th class="w-bobot">Bobot S1</th><th class="w-bobot">Bobot S2</th><th class="w-act"></th>
-        </tr></thead>
-        <tbody>
-          ${tps.map((tp) => `
-            <tr data-tp-id="${tp.id}">
-              <td class="w-kode cell-muted">${escapeHtml(tp.kode || "")}</td>
-              <td class="w-elemen"><span class="elemen-text" title="${escapeHtml(tp.elemen || "")}">${escapeHtml(tp.elemen || "")}</span></td>
-              <td class="col-tujuan"><textarea data-field="tujuan" rows="2">${escapeHtml(tp.tujuan || "")}</textarea></td>
-              <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot1" value="${tp.bobot1 ?? 0}" title="Bobot semester 1 (0 = tidak dipakai)" class="${(tp.bobot1 ?? 0) == 0 ? "is-zero" : ""}" /></td>
-              <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot2" value="${tp.bobot2 ?? 0}" title="Bobot semester 2 (0 = tidak dipakai)" class="${(tp.bobot2 ?? 0) == 0 ? "is-zero" : ""}" /></td>
-              <td class="w-act"><button type="button" class="btn btn-primary btn-sm btn-save-tp">Simpan</button></td>
-            </tr>`).join("")}
-        </tbody>
-      </table>
-    </div>
-    <p class="hint">Bobot 0% = tidak dipakai di semester tersebut. Total ideal S1/S2 ≈ 100%.</p>`;
+    <div class="table-scroll"><table class="sheet">
+      <thead><tr><th class="w-kode">Kode</th><th class="w-elemen">Elemen</th><th class="col-tujuan">Tujuan Pembelajaran</th><th class="w-bobot">Bobot S1</th><th class="w-bobot">Bobot S2</th><th class="w-act"></th></tr></thead>
+      <tbody>${tps.map((tp) => `
+        <tr data-tp-id="${tp.id}">
+          <td class="w-kode cell-muted">${escapeHtml(tp.kode || "")}</td>
+          <td class="w-elemen"><span class="elemen-text" title="${escapeHtml(tp.elemen || "")}">${escapeHtml(tp.elemen || "")}</span></td>
+          <td class="col-tujuan"><textarea data-field="tujuan" rows="2">${escapeHtml(tp.tujuan || "")}</textarea></td>
+          <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot1" value="${tp.bobot1 ?? 0}" title="Bobot semester 1 (0 = tidak dipakai)" class="${(tp.bobot1 ?? 0) == 0 ? "is-zero" : ""}" /></td>
+          <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot2" value="${tp.bobot2 ?? 0}" title="Bobot semester 2 (0 = tidak dipakai)" class="${(tp.bobot2 ?? 0) == 0 ? "is-zero" : ""}" /></td>
+          <td class="w-act"><button type="button" class="btn btn-primary btn-sm btn-save-tp">Simpan</button></td>
+        </tr>`).join("")}</tbody></table></div>
+    <p class="hint">Bobot 0% = tidak dipakai di semester tersebut. Total ideal S1/S2 ≈ 100%. Pill di atas berubah langsung saat angka diubah.</p>`;
   document.getElementById("sel-tp-mapel").value = state.tpTabMapelId || (mapel && mapel.id) || "";
   document.getElementById("sel-tp-mapel").onchange = (e) => { state.tpTabMapelId = e.target.value; renderTabTP(); };
   document.getElementById("btn-refresh-tp").onclick = async () => { await loadKurikulum(); renderTabTP(); showSuccess("Kurikulum dimuat ulang."); };
   document.getElementById("btn-seed-tp").onclick = () => handleSeedTP(KURIKULUM_SOURCE === "firestore");
+  function refreshBobotPills() {
+    let s1 = 0, s2 = 0;
+    panel.querySelectorAll('[data-field="bobot1"]').forEach((el) => { s1 += Number(el.value) || 0; });
+    panel.querySelectorAll('[data-field="bobot2"]').forEach((el) => { s2 += Number(el.value) || 0; });
+    const pill1 = panel.querySelector(".bobot-pill-s1");
+    const pill2 = panel.querySelector(".bobot-pill-s2");
+    if (pill1) {
+      pill1.textContent = "S1 " + s1.toFixed(0) + "%";
+      pill1.className = "bobot-pill bobot-pill-s1 " + (Math.abs(s1 - 100) < 0.01 ? "ok" : "warn");
+    }
+    if (pill2) {
+      pill2.textContent = "S2 " + s2.toFixed(0) + "%";
+      pill2.className = "bobot-pill bobot-pill-s2 " + (Math.abs(s2 - 100) < 0.01 ? "ok" : "warn");
+    }
+  }
   panel.querySelectorAll('.w-bobot input[type="number"]').forEach((inp) => {
     inp.addEventListener("input", () => {
       const v = Number(inp.value) || 0;
       inp.classList.toggle("is-zero", v === 0);
+      refreshBobotPills();
     });
   });
   panel.querySelectorAll(".btn-save-tp").forEach((btn) => {
@@ -352,159 +296,41 @@ function renderTabTP() {
       if (bobot1 > 0 && bobot2 === 0) semester = "1";
       else if (bobot2 > 0 && bobot1 === 0) semester = "2";
       try {
-        if (typeof updateTP === "function") await updateTP(tpId, { bobot1, bobot2, bobot: bobot1 || bobot2, semester, tujuan });
         const m = KURIKULUM.find((x) => x.id === state.tpTabMapelId);
         const tp = m && (m.tp || []).find((t) => t.id === tpId);
+        const payload = {
+          mapelId: (m && m.id) || state.tpTabMapelId || "",
+          bobot1, bobot2,
+          bobot: bobot1 || bobot2,
+          semester,
+          tujuan,
+        };
+        if (tp) {
+          if (tp.kode) payload.kode = tp.kode;
+          if (tp.elemen) payload.elemen = tp.elemen;
+          if (tp.urutan != null) payload.urutan = tp.urutan;
+          if (tp.cabang) payload.cabang = tp.cabang;
+        }
+        if (typeof updateTP === "function") await updateTP(tpId, payload);
         if (tp) { tp.bobot1 = bobot1; tp.bobot2 = bobot2; tp.bobot = bobot1 || bobot2; tp.semester = semester; tp.tujuan = tujuan; }
-        showSuccess("TP disimpan.");
-        renderTabTP();
-      } catch (e) { showError(e.message || "Gagal simpan TP."); }
+        showSuccess("TP disimpan di Firestore.");
+        refreshBobotPills();
+      } catch (e) {
+        const msg = e.message || "Gagal simpan TP.";
+        if (/No document to update/i.test(msg) || e.code === "not-found") {
+          showError("Dokumen TP belum ada di Firestore. Klik Seed Firestore dulu, lalu simpan lagi.");
+        } else {
+          showError(msg);
+        }
+      }
     };
   });
-}
-
-
-async function renderTabRekap() {
-  const panel = document.getElementById("tab-rekap");
-  if (!panel) return;
-
-  document.getElementById("topbar-actions").innerHTML = `
-    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-rekap">Muat ulang</button>`;
-
-  if (!state.rekapMapelId && KURIKULUM.length) state.rekapMapelId = KURIKULUM[0].id;
-
-  const mapelOpts = KURIKULUM.map(
-    (m) => `<option value="${m.id}" ${m.id === state.rekapMapelId ? "selected" : ""}>${escapeHtml(m.nama)}</option>`
-  ).join("");
-
-  panel.innerHTML = `
-    <p class="page-desc">Rekap per siswa · rata-rata kompetensi → TP → mapel (bobot semester)</p>
-    <div class="filters">
-      <div class="ff">
-        <label>Mapel</label>
-        <select id="sel-rekap-mapel">${mapelOpts || '<option value="">— tidak ada mapel —</option>'}</select>
-      </div>
-      <div class="ff">
-        <label>Semester</label>
-        <select id="sel-rekap-sem">
-          <option value="1" ${state.rekapSemester === "1" ? "selected" : ""}>Semester 1</option>
-          <option value="2" ${state.rekapSemester === "2" ? "selected" : ""}>Semester 2</option>
-          <option value="kedua" ${state.rekapSemester === "kedua" ? "selected" : ""}>Setahun</option>
-        </select>
-      </div>
-    </div>
-    <div id="rekap-body"><p class="hint">Memuat…</p></div>`;
-
-  document.getElementById("sel-rekap-mapel").onchange = (e) => {
-    state.rekapMapelId = e.target.value;
-    renderTabRekap();
-  };
-  document.getElementById("sel-rekap-sem").onchange = (e) => {
-    state.rekapSemester = e.target.value;
-    renderTabRekap();
-  };
-  document.getElementById("btn-refresh-rekap").onclick = () => renderTabRekap();
-
-  await fillRekapBody();
-}
-
-async function fillRekapBody() {
-  const body = document.getElementById("rekap-body");
-  if (!body) return;
-
-  const mapel = KURIKULUM.find((m) => m.id === state.rekapMapelId);
-  if (!mapel) {
-    body.innerHTML = `<div class="empty-hint">Pilih mapel atau seed kurikulum dulu.</div>`;
-    return;
-  }
-  if (!SISWA.length) {
-    body.innerHTML = `<div class="empty-hint">Data siswa kosong. Seed siswa dulu.</div>`;
-    return;
-  }
-
-  let docs = [];
-  try {
-    if (typeof listPenilaianByMapel === "function") {
-      docs = await listPenilaianByMapel(mapel.id);
-    }
-  } catch (e) {
-    body.innerHTML = `<div class="empty-hint">Gagal memuat penilaian: ${escapeHtml(formatFsError(e))}</div>`;
-    return;
-  }
-
-  if (typeof buildRekapMapel !== "function") {
-    body.innerHTML = `<div class="empty-hint">Modul perhitungan belum dimuat.</div>`;
-    return;
-  }
-
-  const rekap = buildRekapMapel(SISWA, mapel, docs, state.rekapSemester);
-  const { columns, rows } = rekap;
-
-  if (!columns.length) {
-    body.innerHTML = `<div class="empty-hint">Tidak ada TP untuk filter semester ini.</div>`;
-    return;
-  }
-
-  const adaNilai = docs.length > 0;
-  const headTP = columns
-    .map(
-      (c) =>
-        `<th class="w-nilai" title="${escapeHtml(c.elemen)} · bobot ${c.bobot}%">${escapeHtml(c.kode)}</th>`
-    )
-    .join("");
-
-  const bodyRows = rows
-    .map((r) => {
-      const tds = columns
-        .map((c) => {
-          const n = r.nilaiTP[c.id];
-          const txt = typeof formatNilai === "function" ? formatNilai(n) : n == null ? "—" : n;
-          return `<td class="num">${txt}</td>`;
-        })
-        .join("");
-      const nm =
-        typeof formatNilai === "function" ? formatNilai(r.nilaiMapel) : r.nilaiMapel == null ? "—" : r.nilaiMapel;
-      const predClass =
-        r.predikat === "A" ? "pred-a" : r.predikat === "B" ? "pred-b" : r.predikat === "C" ? "pred-c" : r.predikat === "D" ? "pred-d" : "";
-      return `<tr>
-        <td class="num">${r.nomorAbsen}</td>
-        <td class="rekap-nama">${escapeHtml(r.nama)}</td>
-        ${tds}
-        <td class="num"><strong>${nm}</strong></td>
-        <td class="num ${predClass}"><strong>${escapeHtml(r.predikat)}</strong></td>
-      </tr>`;
-    })
-    .join("");
-
-  body.innerHTML = `
-    <p class="hint" style="margin:0 0 .75rem">
-      ${escapeHtml(mapel.nama)} ·
-      ${state.rekapSemester === "1" ? "Semester 1" : state.rekapSemester === "2" ? "Semester 2" : "Setahun"} ·
-      ${docs.length} sesi penilaian di Firestore
-      ${adaNilai ? "" : " · belum ada nilai tersimpan"}
-    </p>
-    <div class="table-scroll rekap-scroll">
-      <table class="sheet rekap-sheet">
-        <thead>
-          <tr>
-            <th class="w-abs">No</th>
-            <th class="rekap-nama">Nama</th>
-            ${headTP}
-            <th class="w-nilai">Mapel</th>
-            <th class="w-jk">Pred</th>
-          </tr>
-        </thead>
-        <tbody>${bodyRows}</tbody>
-      </table>
-    </div>
-    <p class="hint">Nilai TP = rata-rata kompetensi yang sudah dinilai. Nilai mapel = rata-rata tertimbang bobot TP (hanya TP yang ada nilainya).</p>`;
 }
 
 function cekBobotSemester(tpList) {
   if (typeof cekBobotPerSemester === "function") return cekBobotPerSemester(tpList);
   return { s1: { total: 0, ok: true }, s2: { total: 0, ok: true } };
 }
-
 function formatFsError(e) {
   if (!e) return "Error tidak diketahui";
   if (e.code === "permission-denied") return "Izin Firestore ditolak. Periksa rules (collection penilaian).";
@@ -519,29 +345,23 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 function showError(msg) {
-  const el = document.getElementById("error-msg") || document.getElementById("msg-area") || document.getElementById("topbar-actions");
+  const el = document.getElementById("error-msg") || document.getElementById("topbar-actions");
   if (!el) { alert(msg); return; }
   if (el.id === "error-msg") { el.textContent = msg; el.className = "flash flash-err"; setTimeout(() => { el.textContent = ""; }, 5000); return; }
-  const d = document.createElement("div"); d.className = "msg msg-err"; d.textContent = msg;
-  el.prepend(d); setTimeout(() => d.remove(), 4000);
+  const d = document.createElement("div"); d.className = "msg msg-err"; d.textContent = msg; el.prepend(d); setTimeout(() => d.remove(), 4000);
 }
 function showSuccess(msg) {
-  const el = document.getElementById("success-msg") || document.getElementById("msg-area") || document.getElementById("topbar-actions");
+  const el = document.getElementById("success-msg") || document.getElementById("topbar-actions");
   if (!el) return;
   if (el.id === "success-msg") { el.textContent = msg; el.className = "flash flash-ok"; setTimeout(() => { el.textContent = ""; }, 4000); return; }
-  const d = document.createElement("div"); d.className = "msg msg-ok"; d.textContent = msg;
-  el.prepend(d); setTimeout(() => d.remove(), 3000);
+  const d = document.createElement("div"); d.className = "msg msg-ok"; d.textContent = msg; el.prepend(d); setTimeout(() => d.remove(), 3000);
 }
 
 async function loadSiswa() {
   try {
     if (typeof fetchSiswa === "function") {
       const list = await fetchSiswa();
-      if (list && list.length) {
-        SISWA = list.map(mapSiswaRow);
-        SISWA_SOURCE = "firestore";
-        return;
-      }
+      if (list && list.length) { SISWA = list.map(mapSiswaRow); SISWA_SOURCE = "firestore"; return; }
     }
   } catch (e) { console.warn("fetchSiswa", e); }
   try {
@@ -549,24 +369,17 @@ async function loadSiswa() {
     if (res.ok) {
       const data = await res.json();
       const arr = Array.isArray(data) ? data : data.siswa || [];
-      SISWA = arr.map(mapSiswaRow);
-      SISWA_SOURCE = "json";
-      return;
+      SISWA = arr.map(mapSiswaRow); SISWA_SOURCE = "json"; return;
     }
   } catch (e) { console.warn("json siswa", e); }
-  SISWA = [];
-  SISWA_SOURCE = "fallback";
+  SISWA = []; SISWA_SOURCE = "fallback";
 }
 
 async function loadKurikulum() {
   try {
     if (typeof fetchKurikulum === "function") {
       const list = await fetchKurikulum();
-      if (list && list.length) {
-        KURIKULUM = normalizeKurikulum(list);
-        KURIKULUM_SOURCE = "firestore";
-        return;
-      }
+      if (list && list.length) { KURIKULUM = normalizeKurikulum(list); KURIKULUM_SOURCE = "firestore"; return; }
     }
   } catch (e) { console.warn("fetchKurikulum", e); }
   try {
@@ -574,35 +387,27 @@ async function loadKurikulum() {
     if (res.ok) {
       const data = await res.json();
       const arr = Array.isArray(data) ? data : data.mapel || [];
-      KURIKULUM = normalizeKurikulum(arr);
-      KURIKULUM_SOURCE = "json";
-      return;
+      KURIKULUM = normalizeKurikulum(arr); KURIKULUM_SOURCE = "json"; return;
     }
   } catch (e) { console.warn("json kurikulum", e); }
-  KURIKULUM = [];
-  KURIKULUM_SOURCE = "none";
+  KURIKULUM = []; KURIKULUM_SOURCE = "none";
 }
 
 async function handleSeedSiswa(force) {
   if (typeof seedSiswa !== "function") return showError("seedSiswa tidak tersedia.");
   try {
     const r = await seedSiswa(force);
-    await loadSiswa();
-    renderTabSiswa();
-    const w = r && r.written != null ? r.written : "?";
-    const s = r && r.skipped != null ? r.skipped : 0;
-    showSuccess(`Seed siswa selesai (tulis ${w}, lewati ${s}).`);
+    await loadSiswa(); renderTabSiswa();
+    showSuccess(`Seed siswa selesai (tulis ${r && r.written != null ? r.written : "?"}, lewati ${r && r.skipped != null ? r.skipped : 0}).`);
   } catch (e) { showError(formatFsError(e)); }
 }
 
 async function handleSeedTP(force) {
-  if (typeof seedKurikulum !== "function" && typeof seedTP !== "function") return showError("seed kurikulum tidak tersedia.");
+  if (typeof seedTP !== "function" && typeof seedKurikulum !== "function") return showError("seed kurikulum tidak tersedia.");
   try {
     if (typeof seedTP === "function") await seedTP(force);
     else await seedKurikulum(force);
-    await loadKurikulum();
-    renderTabTP();
-    showSuccess("Seed kurikulum selesai.");
+    await loadKurikulum(); renderTabTP(); showSuccess("Seed kurikulum selesai.");
   } catch (e) { showError(formatFsError(e)); }
 }
 
