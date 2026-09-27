@@ -1,5 +1,5 @@
 /**
- * penilaian-ui.js — layout padat (lihat css/style.css)
+ * penilaian-ui.js — sidebar + spreadsheet workspace
  */
 
 const SISWA_FALLBACK = [
@@ -35,189 +35,159 @@ let SISWA_SOURCE = "fallback";
 let KURIKULUM = [];
 let KURIKULUM_SOURCE = "none";
 
-const state = { mapel: null, tp: null, kompetensi: null, tpTabMapelId: null };
+const state = { mapelId: "", tpId: "", kompetensiId: "", tpTabMapelId: null };
 
-document.querySelectorAll(".tab-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    const tab = btn.dataset.tab;
-    document.querySelectorAll(".tab-panel").forEach((p) => (p.style.display = "none"));
-    document.getElementById(`tab-${tab}`).style.display = "block";
-    if (tab === "siswa") renderTabSiswa();
-    if (tab === "tp") renderTabTP();
-  });
+const TITLES = {
+  input: "Input Nilai",
+  rekap: "Rekap",
+  siswa: "Siswa",
+  tp: "Kurikulum / TP",
+};
+
+/* —— Nav —— */
+document.querySelectorAll(".sidebar-nav .nav-item[data-tab]").forEach((btn) => {
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 
-function showStep(stepId) {
-  document.querySelectorAll(".step-section").forEach((s) => s.classList.remove("active"));
-  document.getElementById(stepId).classList.add("active");
-  renderBreadcrumb();
-}
+document.getElementById("sidebar-toggle")?.addEventListener("click", () => {
+  document.getElementById("sidebar").classList.toggle("open");
+});
 
-function renderBreadcrumb() {
-  const el = document.getElementById("breadcrumb");
-  const parts = [`<button type="button" onclick="goToMapel()">Mapel</button>`];
-  if (state.mapel) {
-    parts.push(`<span class="sep">›</span>`);
-    parts.push(
-      state.tp
-        ? `<button type="button" onclick="goToTP()">${escapeHtml(state.mapel.nama)}</button>`
-        : `<span class="current">${escapeHtml(state.mapel.nama)}</span>`
-    );
-  }
-  if (state.tp) {
-    parts.push(`<span class="sep">›</span>`);
-    parts.push(
-      state.kompetensi
-        ? `<button type="button" onclick="goToKompetensi()">${escapeHtml(state.tp.kode)}</button>`
-        : `<span class="current">${escapeHtml(state.tp.kode)}</span>`
-    );
-  }
-  if (state.kompetensi) {
-    parts.push(`<span class="sep">›</span><span class="current">Kompetensi</span>`);
-  }
-  el.innerHTML = parts.join("");
-}
-
-function renderMapel() {
-  const list = document.getElementById("mapel-list");
-  if (!KURIKULUM.length) {
-    list.innerHTML = `<p class="page-desc">Belum ada mapel. Tab <strong>TP</strong> → seed kurikulum.</p>`;
-    return;
-  }
-  list.innerHTML = KURIKULUM.map(
-    (m) => `
-    <button type="button" class="choice-card" onclick="pilihMapel('${m.id}')">
-      <h3>${escapeHtml(m.nama)}</h3>
-      <p>${escapeHtml(m.kode)} · ${(m.tp || []).length} TP</p>
-    </button>`
-  ).join("");
-}
-
-function renderTP() {
-  const container = document.getElementById("tp-list");
-  const tps = state.mapel.tp || [];
-  if (!tps.length) {
-    container.innerHTML = `<p class="page-desc">Belum ada TP.</p>`;
-    return;
-  }
-  const byElemen = {};
-  tps.forEach((tp) => {
-    const key = tp.elemen || "Lainnya";
-    if (!byElemen[key]) byElemen[key] = [];
-    byElemen[key].push(tp);
+function switchTab(tab) {
+  document.querySelectorAll(".sidebar-nav .nav-item[data-tab]").forEach((b) => {
+    b.classList.toggle("active", b.dataset.tab === tab);
   });
-  let html = "";
-  for (const [elemen, items] of Object.entries(byElemen)) {
-    html += `<div class="elemen-group"><h2>${escapeHtml(elemen)}</h2><div class="choice-grid">`;
-    items.forEach((tp) => {
-      html += `
-        <button type="button" class="choice-card" onclick="pilihTP('${tp.id}')">
-          <h3>${escapeHtml(tp.kode)}</h3>
-          <p>${escapeHtml(tp.tujuan || "")}</p>
-          <div class="meta">${tp.bobot}% · Sem ${tp.semester} · ${(tp.kompetensi || []).length} komp.</div>
-        </button>`;
-    });
-    html += `</div></div>`;
-  }
-  container.innerHTML = html;
+  document.querySelectorAll(".tab-panel").forEach((p) => {
+    p.hidden = p.id !== `tab-${tab}`;
+  });
+  document.getElementById("topbar-title").textContent = TITLES[tab] || tab;
+  document.getElementById("sidebar")?.classList.remove("open");
+
+  const actions = document.getElementById("topbar-actions");
+  actions.innerHTML = "";
+
+  if (tab === "siswa") renderTabSiswa();
+  if (tab === "tp") renderTabTP();
 }
 
-function renderKompetensi() {
-  const list = document.getElementById("kompetensi-list");
-  const items = state.tp.kompetensi || [];
-  if (!items.length) {
-    list.innerHTML = `<p class="page-desc">Belum ada kompetensi. Edit di tab TP.</p>`;
+/* —— Input: cascade selects —— */
+function fillMapelSelect() {
+  const sel = document.getElementById("sel-mapel");
+  sel.innerHTML =
+    `<option value="">— pilih mapel —</option>` +
+    KURIKULUM.map((m) => `<option value="${m.id}">${escapeHtml(m.nama)}</option>`).join("");
+}
+
+function fillTPSelect() {
+  const sel = document.getElementById("sel-tp");
+  const mapel = KURIKULUM.find((m) => m.id === state.mapelId);
+  if (!mapel) {
+    sel.innerHTML = `<option value="">—</option>`;
+    sel.disabled = true;
     return;
   }
-  list.innerHTML = items
-    .map(
-      (k, i) => `
-    <button type="button" class="choice-card" onclick="pilihKompetensi('${k.id}')">
-      <h3>Kompetensi ${i + 1}</h3>
-      <p>${escapeHtml(k.deskripsi)}</p>
-    </button>`
-    )
-    .join("");
+  const groups = {};
+  (mapel.tp || []).forEach((tp) => {
+    const e = tp.elemen || "Lainnya";
+    if (!groups[e]) groups[e] = [];
+    groups[e].push(tp);
+  });
+  let html = `<option value="">— pilih TP —</option>`;
+  for (const [elemen, list] of Object.entries(groups)) {
+    html += `<optgroup label="${escapeHtml(elemen)}">`;
+    list.forEach((tp) => {
+      html += `<option value="${tp.id}">${escapeHtml(tp.kode)} — ${escapeHtml(short(tp.tujuan, 48))}</option>`;
+    });
+    html += `</optgroup>`;
+  }
+  sel.innerHTML = html;
+  sel.disabled = false;
 }
 
-function renderInputNilai() {
+function fillKompetensiSelect() {
+  const sel = document.getElementById("sel-kompetensi");
+  const mapel = KURIKULUM.find((m) => m.id === state.mapelId);
+  const tp = mapel && (mapel.tp || []).find((t) => t.id === state.tpId);
+  if (!tp) {
+    sel.innerHTML = `<option value="">—</option>`;
+    sel.disabled = true;
+    return;
+  }
+  sel.innerHTML =
+    `<option value="">— pilih kompetensi —</option>` +
+    (tp.kompetensi || [])
+      .map((k, i) => `<option value="${k.id}">${i + 1}. ${escapeHtml(short(k.deskripsi, 70))}</option>`)
+      .join("");
+  sel.disabled = false;
+}
+
+function updateInputWorkspace() {
+  const ready = state.mapelId && state.tpId && state.kompetensiId;
+  document.getElementById("input-workspace").classList.toggle("hidden", !ready);
+  document.getElementById("input-empty").classList.toggle("hidden", ready);
+  if (ready) renderNilaiSheet();
+}
+
+function renderNilaiSheet() {
   document.getElementById("tanggal").value = new Date().toISOString().slice(0, 10);
   document.getElementById("catatan").value = "";
-  document.getElementById("siswa-nilai-list").innerHTML = SISWA.map(
+  document.getElementById("tbody-nilai").innerHTML = SISWA.map(
     (s) => `
-    <div class="siswa-row">
-      <span class="absen">${s.nomorAbsen}</span>
-      <span class="nama" title="${escapeHtml(s.nama)}">${escapeHtml(s.nama)}</span>
-      <input type="number" min="0" max="100" step="1" data-siswa="${s.id}" placeholder="—" />
-    </div>`
+    <tr>
+      <td class="num">${s.nomorAbsen}</td>
+      <td>${escapeHtml(s.nama)}</td>
+      <td class="w-nilai"><input type="number" min="0" max="100" step="1" data-siswa="${s.id}" /></td>
+    </tr>`
   ).join("");
 }
 
-function pilihMapel(id) {
-  state.mapel = KURIKULUM.find((m) => m.id === id);
-  state.tp = null;
-  state.kompetensi = null;
-  renderTP();
-  showStep("step-tp");
-}
-function pilihTP(id) {
-  state.tp = (state.mapel.tp || []).find((t) => t.id === id);
-  state.kompetensi = null;
-  renderKompetensi();
-  showStep("step-kompetensi");
-}
-function pilihKompetensi(id) {
-  state.kompetensi = (state.tp.kompetensi || []).find((k) => k.id === id);
-  renderInputNilai();
-  showStep("step-nilai");
-}
-function goToMapel() {
-  state.mapel = null;
-  state.tp = null;
-  state.kompetensi = null;
-  showStep("step-mapel");
-}
-function goToTP() {
-  state.tp = null;
-  state.kompetensi = null;
-  renderTP();
-  showStep("step-tp");
-}
-function goToKompetensi() {
-  state.kompetensi = null;
-  renderKompetensi();
-  showStep("step-kompetensi");
-}
+document.getElementById("sel-mapel").addEventListener("change", (e) => {
+  state.mapelId = e.target.value;
+  state.tpId = "";
+  state.kompetensiId = "";
+  fillTPSelect();
+  fillKompetensiSelect();
+  updateInputWorkspace();
+});
 
-document.getElementById("btn-batal").addEventListener("click", () => goToKompetensi());
+document.getElementById("sel-tp").addEventListener("change", (e) => {
+  state.tpId = e.target.value;
+  state.kompetensiId = "";
+  fillKompetensiSelect();
+  updateInputWorkspace();
+});
+
+document.getElementById("sel-kompetensi").addEventListener("change", (e) => {
+  state.kompetensiId = e.target.value;
+  updateInputWorkspace();
+});
+
 document.getElementById("btn-simpan").addEventListener("click", () => {
   const tanggal = document.getElementById("tanggal").value;
   const catatan = document.getElementById("catatan").value.trim();
-  const inputs = document.querySelectorAll("#siswa-nilai-list input[data-siswa]");
+  const inputs = document.querySelectorAll("#tbody-nilai input[data-siswa]");
   const nilaiMap = {};
-  let adaNilai = false;
-  let errorAbsen = null;
+  let ada = false;
+  let bad = null;
   inputs.forEach((inp) => {
     const v = inp.value.trim();
-    if (v !== "") {
-      const n = Number(v);
-      if (isNaN(n) || n < 0 || n > 100) {
-        errorAbsen = inp.closest(".siswa-row").querySelector(".absen").textContent;
-        return;
-      }
-      nilaiMap[inp.dataset.siswa] = n;
-      adaNilai = true;
+    if (v === "") return;
+    const n = Number(v);
+    if (isNaN(n) || n < 0 || n > 100) {
+      bad = inp.closest("tr").querySelector(".num").textContent;
+      return;
     }
+    nilaiMap[inp.dataset.siswa] = n;
+    ada = true;
   });
-  if (errorAbsen) return showError(`Nilai 0–100 (absen ${errorAbsen})`);
-  if (!adaNilai) return showError("Isi minimal satu nilai.");
+  if (bad) return showError(`Nilai 0–100 (baris ${bad})`);
+  if (!ada) return showError("Isi minimal satu nilai.");
   if (!tanggal) return showError("Tanggal wajib.");
+
   const payload = {
-    mapelId: state.mapel.id,
-    tpId: state.tp.id,
-    kompetensiId: state.kompetensi.id,
+    mapelId: state.mapelId,
+    tpId: state.tpId,
+    kompetensiId: state.kompetensiId,
     tanggal,
     catatan,
     nilai: nilaiMap,
@@ -228,35 +198,36 @@ document.getElementById("btn-simpan").addEventListener("click", () => {
     JSON.stringify(payload)
   );
   showSuccess("Nilai tersimpan (sementara di browser).");
-  goToKompetensi();
 });
 
+/* —— Siswa (sheet) —— */
 function renderTabSiswa() {
   const panel = document.getElementById("tab-siswa");
-  const sourceLabel =
-    SISWA_SOURCE === "firestore" ? "Firestore ✓" : SISWA_SOURCE === "json" ? "JSON" : "Lokal";
+  const src = SISWA_SOURCE === "firestore" ? "Firestore ✓" : SISWA_SOURCE === "json" ? "JSON" : "Lokal";
+
+  document.getElementById("topbar-actions").innerHTML = `
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-siswa">Muat ulang</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-siswa">
+      ${SISWA_SOURCE === "firestore" ? "Seed ulang" : "Seed Firestore"}
+    </button>`;
+
   panel.innerHTML = `
-    <div class="tp-toolbar">
-      <p class="page-desc">5A · ${SISWA.length} siswa · <strong>${sourceLabel}</strong></p>
-      <div style="display:flex;gap:0.35rem">
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-siswa">Muat ulang</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-seed-siswa">
-          ${SISWA_SOURCE === "firestore" ? "Seed ulang" : "Seed Firestore"}
-        </button>
-      </div>
-    </div>
-    <div class="input-panel">
-      <div class="siswa-nilai-list" style="max-height:min(60vh,480px)">
-        ${SISWA.map(
-          (s) => `
-          <div class="siswa-row" style="grid-template-columns:1.75rem 1fr auto">
-            <span class="absen">${s.nomorAbsen}</span>
-            <span class="nama">${escapeHtml(s.nama)}</span>
-            <span style="font-size:0.7rem;color:var(--text-faint)">${escapeHtml(s.nisn)}</span>
-          </div>`
-        ).join("")}
-      </div>
+    <p class="page-desc" style="margin-bottom:.5rem">Kelas 5A · ${SISWA.length} siswa · sumber <strong>${src}</strong></p>
+    <div class="table-scroll">
+      <table class="sheet">
+        <thead><tr><th class="w-abs">No</th><th>Nama</th><th class="w-nilai">NISN</th></tr></thead>
+        <tbody>
+          ${SISWA.map(
+            (s) => `<tr>
+              <td class="num">${s.nomorAbsen}</td>
+              <td>${escapeHtml(s.nama)}</td>
+              <td class="cell-muted">${escapeHtml(s.nisn)}</td>
+            </tr>`
+          ).join("")}
+        </tbody>
+      </table>
     </div>`;
+
   document.getElementById("btn-refresh-siswa").onclick = async () => {
     await loadSiswa();
     renderTabSiswa();
@@ -265,148 +236,135 @@ function renderTabSiswa() {
   document.getElementById("btn-seed-siswa").onclick = () => handleSeedSiswa(SISWA_SOURCE === "firestore");
 }
 
+/* —— Kurikulum TP (sheet editable) —— */
 function renderTabTP() {
   const panel = document.getElementById("tab-tp");
   const src =
-    KURIKULUM_SOURCE === "firestore"
-      ? "Firestore ✓"
-      : KURIKULUM_SOURCE === "json"
-        ? "JSON"
-        : "Kosong";
+    KURIKULUM_SOURCE === "firestore" ? "Firestore ✓" : KURIKULUM_SOURCE === "json" ? "JSON" : "Kosong";
 
   if (!state.tpTabMapelId && KURIKULUM.length) state.tpTabMapelId = KURIKULUM[0].id;
   const mapel = KURIKULUM.find((m) => m.id === state.tpTabMapelId);
+
+  document.getElementById("topbar-actions").innerHTML = `
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp">Muat ulang</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp">
+      ${KURIKULUM_SOURCE === "firestore" ? "Seed ulang" : "Seed kurikulum"}
+    </button>`;
 
   const mapelOptions = KURIKULUM.map(
     (m) =>
       `<option value="${m.id}" ${state.tpTabMapelId === m.id ? "selected" : ""}>${escapeHtml(m.nama)}</option>`
   ).join("");
 
-  let body = "";
-  if (!mapel) {
-    body = `<p class="page-desc">Belum ada kurikulum. Klik <strong>Seed kurikulum</strong>.</p>`;
-  } else {
-    const bobotCheck = cekTotalBobot(mapel.tp || []);
-    const bobotClass = bobotCheck.ok ? "ok" : "warn";
-    const bobotText = bobotCheck.ok
-      ? `✓ Total bobot ${bobotCheck.total.toFixed(0)}%`
-      : `⚠ Total ${bobotCheck.total.toFixed(0)}% (${bobotCheck.selisih > 0 ? "+" : ""}${bobotCheck.selisih.toFixed(0)})`;
+  let extra = "";
+  let rows = `<tr><td colspan="6" class="cell-muted">Belum ada data. Seed kurikulum dulu.</td></tr>`;
 
-    let kelompokHtml = "";
+  if (mapel) {
+    const bc = cekTotalBobot(mapel.tp || []);
+    extra = `<span class="bobot-pill ${bc.ok ? "ok" : "warn"}">${bc.ok ? "✓" : "⚠"} Bobot ${bc.total.toFixed(0)}%</span>`;
+
     if (mapel.kelompokBobot) {
       const kb = mapel.kelompokBobot;
-      const kbCheck = cekTotalBobot(Object.values(kb).map((b) => ({ bobot: Number(b) })));
-      kelompokHtml = `
-        <div class="input-panel" style="margin-bottom:0.5rem">
-          <div style="font-weight:600;font-size:0.75rem;margin-bottom:0.4rem">Bobot antar cabang</div>
-          <div class="cabang-grid">
-            ${Object.entries(kb)
-              .map(
-                ([nama, bobot]) => `
-              <div class="form-group" style="margin:0">
-                <label>${escapeHtml(nama)}</label>
-                <input type="number" min="0" max="100" step="1" data-cabang="${escapeHtml(nama)}" value="${bobot}" class="kb-input" />
-              </div>`
-              )
-              .join("")}
-          </div>
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem">
-            <span class="bobot-status ${kbCheck.ok ? "ok" : "warn"}">${kbCheck.ok ? "✓" : "⚠"} ${kbCheck.total}%</span>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-save-kb">Simpan cabang</button>
-          </div>
+      const kbc = cekTotalBobot(Object.values(kb).map((b) => ({ bobot: Number(b) })));
+      extra += `
+        <div class="cabang-row" style="margin-top:.5rem;width:100%">
+          ${Object.entries(kb)
+            .map(
+              ([n, b]) => `
+            <div class="ff"><label>${escapeHtml(n)}</label>
+              <input type="number" min="0" max="100" class="kb-input" data-cabang="${escapeHtml(n)}" value="${b}" />
+            </div>`
+            )
+            .join("")}
+          <button type="button" class="btn btn-primary btn-sm" id="btn-save-kb">Simpan cabang</button>
+          <span class="bobot-pill ${kbc.ok ? "ok" : "warn"}">${kbc.total}%</span>
         </div>`;
     }
 
-    body = `
-      ${kelompokHtml}
-      <p class="bobot-status ${bobotClass}">${bobotText} · ideal 100%/semester</p>
-      ${(mapel.tp || [])
-        .map((tp) => {
-          const kompList = (tp.kompetensi || [])
-            .map(
-              (k, i) => `
-            <div class="komp-row">
-              <span class="absen">${i + 1}</span>
-              <input type="text" data-komp-id="${k.id}" value="${escapeHtml(k.deskripsi)}" />
-              <button type="button" class="btn btn-secondary btn-sm btn-save-komp" data-komp-id="${k.id}">OK</button>
-            </div>`
-            )
-            .join("");
-          return `
-          <div class="tp-card" data-tp-id="${tp.id}">
-            <div class="tp-card-head">
-              <div>
-                <span class="tp-id">${escapeHtml(tp.kode)}</span>
-                ${tp.cabang ? `<span class="tp-meta"> · ${escapeHtml(tp.cabang)}</span>` : ""}
-                <div class="tp-meta">${escapeHtml(tp.elemen || "")}</div>
+    rows = (mapel.tp || [])
+      .map((tp) => {
+        const nK = (tp.kompetensi || []).length;
+        return `<tr data-tp-id="${tp.id}">
+          <td><strong>${escapeHtml(tp.kode)}</strong>
+            ${tp.cabang ? `<div class="cell-muted">${escapeHtml(tp.cabang)}</div>` : ""}
+          </td>
+          <td class="cell-muted">${escapeHtml(tp.elemen || "")}</td>
+          <td class="w-bobot"><input type="number" min="0" max="100" data-field="bobot" value="${tp.bobot}" /></td>
+          <td class="w-sem">
+            <select data-field="semester">
+              <option value="1" ${tp.semester === "1" ? "selected" : ""}>1</option>
+              <option value="2" ${tp.semester === "2" ? "selected" : ""}>2</option>
+              <option value="kedua" ${tp.semester === "kedua" ? "selected" : ""}>Kedua</option>
+            </select>
+          </td>
+          <td><textarea data-field="tujuan" rows="2">${escapeHtml(tp.tujuan || "")}</textarea>
+            <details style="margin-top:.25rem">
+              <summary class="cell-muted" style="cursor:pointer">${nK} kompetensi</summary>
+              <div style="margin-top:.35rem">
+                ${(tp.kompetensi || [])
+                  .map(
+                    (k, i) => `
+                  <div style="display:flex;gap:.35rem;margin-bottom:.25rem;align-items:center">
+                    <span class="cell-muted">${i + 1}</span>
+                    <input type="text" data-komp-id="${k.id}" value="${escapeHtml(k.deskripsi)}" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:.25rem .35rem;font-size:.75rem" />
+                    <button type="button" class="btn btn-secondary btn-sm btn-save-komp" data-komp-id="${k.id}">OK</button>
+                  </div>`
+                  )
+                  .join("")}
               </div>
-              <div class="tp-card-controls">
-                <div>
-                  <label>Bobot</label><br/>
-                  <input type="number" min="0" max="100" step="1" data-field="bobot" value="${tp.bobot}" />
-                </div>
-                <div>
-                  <label>Sem</label><br/>
-                  <select data-field="semester">
-                    <option value="1" ${tp.semester === "1" ? "selected" : ""}>1</option>
-                    <option value="2" ${tp.semester === "2" ? "selected" : ""}>2</option>
-                    <option value="kedua" ${tp.semester === "kedua" ? "selected" : ""}>Kedua</option>
-                  </select>
-                </div>
-                <button type="button" class="btn btn-primary btn-sm btn-save-tp" data-tp-id="${tp.id}">Simpan</button>
-              </div>
-            </div>
-            <div class="tp-card-body">
-              <textarea data-field="tujuan" rows="2">${escapeHtml(tp.tujuan || "")}</textarea>
-              <details>
-                <summary>Kompetensi (${(tp.kompetensi || []).length})</summary>
-                ${kompList || "<p class=page-desc>Belum ada</p>"}
-              </details>
-            </div>
-          </div>`;
-        })
-        .join("")}`;
+            </details>
+          </td>
+          <td class="w-act"><button type="button" class="btn btn-primary btn-sm btn-save-tp" data-tp-id="${tp.id}">Simpan</button></td>
+        </tr>`;
+      })
+      .join("");
   }
 
   panel.innerHTML = `
-    <div class="tp-toolbar">
-      <p class="page-desc">Kurikulum · <strong>${src}</strong></p>
-      <div style="display:flex;gap:0.35rem">
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp">Muat ulang</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp">
-          ${KURIKULUM_SOURCE === "firestore" ? "Seed ulang" : "Seed kurikulum"}
-        </button>
+    <div class="filter-bar">
+      <div class="ff">
+        <label>Mapel</label>
+        <select id="tp-mapel-select">${mapelOptions || "<option>—</option>"}</select>
       </div>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">${extra}</div>
+      <span class="cell-muted" style="margin-left:auto;font-size:.72rem">Sumber: ${src}</span>
     </div>
-    <div class="tp-mapel-row">
-      <label>Mapel</label>
-      <select id="tp-mapel-select">${mapelOptions || "<option>—</option>"}</select>
-    </div>
-    <div id="tp-edit-body">${body}</div>`;
+    <div class="table-scroll">
+      <table class="sheet">
+        <thead>
+          <tr>
+            <th>Kode</th>
+            <th>Elemen</th>
+            <th class="w-bobot">Bobot%</th>
+            <th class="w-sem">Semester</th>
+            <th>Tujuan / Kompetensi</th>
+            <th class="w-act"></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 
   document.getElementById("btn-refresh-tp").onclick = async () => {
     await loadKurikulum();
     renderTabTP();
-    renderMapel();
+    fillMapelSelect();
     showSuccess("Kurikulum dimuat ulang.");
   };
   document.getElementById("btn-seed-tp").onclick = () => handleSeedKurikulum(KURIKULUM_SOURCE === "firestore");
 
-  const sel = document.getElementById("tp-mapel-select");
-  if (sel) {
-    sel.onchange = () => {
-      state.tpTabMapelId = sel.value;
-      renderTabTP();
-    };
-  }
+  document.getElementById("tp-mapel-select").onchange = (e) => {
+    state.tpTabMapelId = e.target.value;
+    renderTabTP();
+  };
 
   panel.querySelectorAll(".btn-save-tp").forEach((btn) => {
     btn.onclick = async () => {
-      const card = btn.closest("[data-tp-id]");
+      const tr = btn.closest("tr");
       const tpId = btn.dataset.tpId;
-      const bobot = Number(card.querySelector('[data-field="bobot"]').value);
-      const semester = card.querySelector('[data-field="semester"]').value;
-      const tujuan = card.querySelector('[data-field="tujuan"]').value.trim();
+      const bobot = Number(tr.querySelector('[data-field="bobot"]').value);
+      const semester = tr.querySelector('[data-field="semester"]').value;
+      const tujuan = tr.querySelector('[data-field="tujuan"]').value.trim();
       if (isNaN(bobot) || bobot < 0 || bobot > 100) return showError("Bobot 0–100.");
       try {
         if (KURIKULUM_SOURCE === "firestore") await updateTP(tpId, { bobot, semester, tujuan });
@@ -420,28 +378,28 @@ function renderTabTP() {
         showSuccess(`TP ${tp ? tp.kode : tpId} disimpan.`);
         renderTabTP();
       } catch (e) {
-        showError(e.message || "Gagal simpan TP.");
+        showError(e.message || "Gagal simpan.");
       }
     };
   });
 
   panel.querySelectorAll(".btn-save-komp").forEach((btn) => {
     btn.onclick = async () => {
-      const kompId = btn.dataset.kompId;
-      const input = panel.querySelector(`input[data-komp-id="${kompId}"]`);
+      const id = btn.dataset.kompId;
+      const input = panel.querySelector(`input[data-komp-id="${id}"]`);
       const deskripsi = input.value.trim();
       if (!deskripsi) return showError("Deskripsi kosong.");
       try {
-        if (KURIKULUM_SOURCE === "firestore") await updateKompetensi(kompId, { deskripsi });
+        if (KURIKULUM_SOURCE === "firestore") await updateKompetensi(id, { deskripsi });
         for (const m of KURIKULUM) {
           for (const tp of m.tp || []) {
-            const k = (tp.kompetensi || []).find((x) => x.id === kompId);
+            const k = (tp.kompetensi || []).find((x) => x.id === id);
             if (k) k.deskripsi = deskripsi;
           }
         }
         showSuccess("Kompetensi disimpan.");
       } catch (e) {
-        showError(e.message || "Gagal simpan.");
+        showError(e.message || "Gagal.");
       }
     };
   });
@@ -453,20 +411,20 @@ function renderTabTP() {
       panel.querySelectorAll(".kb-input").forEach((inp) => {
         kelompokBobot[inp.dataset.cabang] = Number(inp.value) || 0;
       });
-      const check = cekTotalBobot(Object.values(kelompokBobot).map((b) => ({ bobot: b })));
       try {
         if (KURIKULUM_SOURCE === "firestore") await updateMapel(state.tpTabMapelId, { kelompokBobot });
         const m = KURIKULUM.find((x) => x.id === state.tpTabMapelId);
         if (m) m.kelompokBobot = kelompokBobot;
-        showSuccess(check.ok ? "Bobot cabang 100%." : `Disimpan · total ${check.total}%`);
+        showSuccess("Bobot cabang disimpan.");
         renderTabTP();
       } catch (e) {
-        showError(e.message || "Gagal simpan.");
+        showError(e.message || "Gagal.");
       }
     };
   }
 }
 
+/* —— Load / seed —— */
 async function loadSiswaFromJson() {
   const res = await fetch("data/siswa-5a.json");
   if (!res.ok) throw new Error("fetch json failed");
@@ -495,17 +453,10 @@ async function loadSiswa() {
     SISWA_SOURCE = "json";
     return;
   } catch (e) {
-    console.warn("JSON siswa:", e);
+    console.warn(e);
   }
   SISWA = [...SISWA_FALLBACK];
   SISWA_SOURCE = "fallback";
-}
-
-async function loadKurikulumFromJson() {
-  const res = await fetch("data/kurikulum-5a.json");
-  if (!res.ok) throw new Error("fetch kurikulum failed");
-  const data = await res.json();
-  return data.mapel || [];
 }
 
 async function loadKurikulum() {
@@ -520,11 +471,14 @@ async function loadKurikulum() {
     console.warn("Firestore kurikulum:", e.message || e);
   }
   try {
-    KURIKULUM = await loadKurikulumFromJson();
+    const res = await fetch("data/kurikulum-5a.json");
+    if (!res.ok) throw new Error("fail");
+    const data = await res.json();
+    KURIKULUM = data.mapel || [];
     KURIKULUM_SOURCE = "json";
     return;
   } catch (e) {
-    console.warn("JSON kurikulum:", e);
+    console.warn(e);
   }
   KURIKULUM = [];
   KURIKULUM_SOURCE = "none";
@@ -534,16 +488,16 @@ async function handleSeedSiswa(force) {
   const loading = document.getElementById("loading");
   loading.classList.add("show");
   try {
-    let sourceList;
+    let list;
     try {
-      sourceList = await loadSiswaFromJson();
+      list = await loadSiswaFromJson();
     } catch {
-      sourceList = SISWA_FALLBACK.map(({ nomorAbsen, nisn, nama }) => ({ nomorAbsen, nisn, nama }));
+      list = SISWA_FALLBACK.map(({ nomorAbsen, nisn, nama }) => ({ nomorAbsen, nisn, nama }));
     }
-    const result = await seedSiswaToFirestore(sourceList, { force: !!force, kelas: "5A" });
+    const r = await seedSiswaToFirestore(list, { force: !!force, kelas: "5A" });
     await loadSiswa();
     renderTabSiswa();
-    showSuccess(`Seed siswa: ${result.written} ditulis, ${result.skipped} dilewati.`);
+    showSuccess(`Seed siswa: ${r.written} ditulis, ${r.skipped} dilewati.`);
   } catch (e) {
     showError(formatFsError(e));
   } finally {
@@ -556,13 +510,13 @@ async function handleSeedKurikulum(force) {
   loading.classList.add("show");
   try {
     const res = await fetch("data/kurikulum-5a.json");
-    if (!res.ok) throw new Error("Gagal memuat kurikulum-5a.json");
+    if (!res.ok) throw new Error("Gagal muat kurikulum-5a.json");
     const data = await res.json();
-    const result = await seedKurikulum(data, { force: !!force });
+    const r = await seedKurikulum(data, { force: !!force });
     await loadKurikulum();
+    fillMapelSelect();
     renderTabTP();
-    renderMapel();
-    showSuccess(`Seed: ${result.mapel} mapel, ${result.tp} TP, ${result.kompetensi} komp.`);
+    showSuccess(`Seed: ${r.mapel} mapel, ${r.tp} TP, ${r.kompetensi} komp.`);
   } catch (e) {
     showError(formatFsError(e));
   } finally {
@@ -576,6 +530,11 @@ function formatFsError(e) {
     return "Izin ditolak. Cek login & Rules Firestore.";
   }
   return msg;
+}
+
+function short(s, n) {
+  s = s || "";
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
 
 function escapeHtml(str) {
@@ -602,6 +561,6 @@ function showSuccess(msg) {
 
 (async function init() {
   await Promise.all([loadSiswa(), loadKurikulum()]);
-  renderMapel();
-  showStep("step-mapel");
+  fillMapelSelect();
+  switchTab("input");
 })();
