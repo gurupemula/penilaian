@@ -121,35 +121,57 @@ a { color: inherit; text-decoration: none; }
   text-align: left; padding: .4rem .45rem; font-size: .65rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: .03em; color: var(--muted); z-index: 1;
 }
-.sheet td { border-bottom: 1px solid #f1f5f9; padding: .25rem .45rem; vertical-align: top; }
+.sheet td { border-bottom: 1px solid #f1f5f9; padding: .3rem .45rem; vertical-align: top; }
 .sheet tbody tr:hover { background: #f8fafc; }
 
-/* Column widths — tujuan gets the space */
+/* Column widths */
 .sheet .w-abs { width: 36px; text-align: center; }
-.sheet .w-kode { width: 52px; }
-.sheet .w-elemen { width: 100px; }
-.sheet .w-bobot { width: 52px; }
+.sheet .w-kode { width: 56px; }
+.sheet .w-elemen { width: 96px; }
+/* Bobot S1/S2 — cukup lebar agar 2–3 digit + % terbaca */
+.sheet .w-bobot { width: 72px; text-align: center; }
 .sheet .w-nilai { width: 72px; }
 .sheet .w-nis { width: 88px; }
 .sheet .w-jk { width: 44px; }
 .sheet .w-ttl { width: 110px; }
-.sheet .w-act { width: 64px; }
+.sheet .w-act { width: 72px; }
 .sheet .col-tujuan { width: auto; }
 
 .sheet .num { text-align: center; font-weight: 600; color: var(--primary); font-variant-numeric: tabular-nums; }
+
 .sheet input[type="number"],
 .sheet input[type="text"],
 .sheet input[type="date"],
 .sheet select,
 .sheet textarea {
-  width: 100%; padding: .25rem .3rem; border: 1px solid transparent; border-radius: 4px;
-  font-size: .78rem; font-family: inherit; background: transparent;
+  width: 100%; padding: .3rem .35rem; border: 1px solid transparent; border-radius: 4px;
+  font-size: .8rem; font-family: inherit; background: transparent;
 }
 .sheet input:hover, .sheet select:hover, .sheet textarea:hover { border-color: var(--border); background: #fff; }
 .sheet input:focus, .sheet select:focus, .sheet textarea:focus {
   outline: none; border-color: var(--primary); background: #fff; box-shadow: 0 0 0 2px rgba(55,48,163,.12);
 }
-.sheet input[type="number"] { text-align: center; }
+.sheet input[type="number"] { text-align: center; font-variant-numeric: tabular-nums; }
+
+/* Input bobot: border selalu terlihat, angka tebal */
+.sheet .w-bobot input[type="number"] {
+  border: 1px solid var(--border);
+  background: #fff;
+  font-weight: 700;
+  font-size: .85rem;
+  min-height: 32px;
+  padding: .3rem .25rem;
+}
+.sheet .w-bobot input[type="number"]:focus {
+  border-color: var(--primary);
+}
+/* Bobot 0 = tidak dipakai di semester itu */
+.sheet .w-bobot input.is-zero {
+  color: var(--faint);
+  font-weight: 500;
+  background: #f8fafc;
+}
+
 .sheet textarea { resize: vertical; min-height: 2.2rem; line-height: 1.35; }
 .sheet .cell-muted { color: var(--faint); font-size: .72rem; }
 .sheet .elemen-text {
@@ -167,6 +189,9 @@ a { color: inherit; text-decoration: none; }
 }
 .bobot-pill.ok { background: var(--ok-bg); color: var(--ok); }
 .bobot-pill.warn { background: #ffedd5; color: var(--warn); }
+.hint-inline {
+  font-size: .72rem; color: var(--muted); width: 100%; margin-top: .15rem;
+}
 .cabang-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-end; margin-bottom: .5rem; }
 .cabang-row .ff { min-width: 100px; }
 .page-desc { color: var(--muted); font-size: .8rem; margin-bottom: .5rem; }
@@ -210,4 +235,5 @@ a { color: inherit; text-decoration: none; }
   .sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; }
   .table-scroll { max-height: calc(100vh - 200px); }
   .sheet .w-elemen { width: 80px; }
+  .sheet .w-bobot { width: 64px; }
 }
