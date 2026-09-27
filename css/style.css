@@ -104,6 +104,11 @@ a {
   background: #5a67d8;
 }
 
+.btn-primary:disabled {
+  background: #a3bffa;
+  cursor: not-allowed;
+}
+
 .btn-secondary {
   background: #edf2f7;
   color: #4a5568;
@@ -120,6 +125,11 @@ a {
 
 .btn-danger:hover {
   background: #f56565;
+}
+
+.btn-sm {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
 }
 
 .toggle-auth {
@@ -149,6 +159,20 @@ a {
 }
 
 .error-msg.show {
+  display: block;
+}
+
+.success-msg {
+  background: #c6f6d5;
+  color: #276749;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.success-msg.show {
   display: block;
 }
 
@@ -184,6 +208,10 @@ a {
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
+}
+
+.container-wide {
+  max-width: 1100px;
 }
 
 .page-title {
@@ -253,7 +281,210 @@ a {
   transform: none;
 }
 
-/* ===== Penilaian Page ===== */
+/* ===== Breadcrumb ===== */
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.breadcrumb button {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.breadcrumb button:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb .sep {
+  color: #cbd5e0;
+}
+
+.breadcrumb .current {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+/* ===== Step cards (Mapel / TP / Kompetensi) ===== */
+.step-section {
+  display: none;
+}
+
+.step-section.active {
+  display: block;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.choice-card {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  text-align: left;
+}
+
+.choice-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.choice-card.selected {
+  border-color: #667eea;
+  background: #ebf4ff;
+}
+
+.choice-card h3 {
+  font-size: 1rem;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+}
+
+.choice-card p {
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.choice-card .meta {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #a0aec0;
+}
+
+.elemen-group {
+  margin-bottom: 1.5rem;
+}
+
+.elemen-group h2 {
+  font-size: 0.95rem;
+  color: #4a5568;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* ===== Form input nilai ===== */
+.input-panel {
+  background: white;
+  border-radius: 14px;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.input-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .input-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+.siswa-nilai-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 420px;
+  overflow-y: auto;
+  margin-bottom: 1.25rem;
+}
+
+.siswa-row {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 5.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.siswa-row .absen {
+  font-weight: 700;
+  color: #667eea;
+  text-align: center;
+}
+
+.siswa-row .nama {
+  font-size: 0.95rem;
+}
+
+.siswa-row input[type="number"] {
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.siswa-row input[type="number"]:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.form-actions .btn {
+  width: auto;
+}
+
+/* ===== Tabs (nanti Rekap dll) ===== */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #718096;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: #4a5568;
+}
+
+.tab-btn.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+/* ===== Placeholder ===== */
 .placeholder-box {
   background: white;
   border-radius: 14px;
@@ -285,16 +516,25 @@ a {
   text-decoration: underline;
 }
 
+.note-box {
+  background: #ebf8ff;
+  border: 1px solid #90cdf4;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.9rem;
+  color: #2b6cb0;
+  margin-bottom: 1.25rem;
+}
+
 /* ===== Loading ===== */
 .loading-overlay {
   position: fixed;
   inset: 0;
   background: rgba(255, 255, 255, 0.7);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 999;
-  display: none;
 }
 
 .loading-overlay.show {
