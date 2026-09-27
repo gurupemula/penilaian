@@ -1,2 +1,1 @@
-/** penilaian-ui.js — RESTORE IN PROGRESS - see next commit */
-console.error('UI incomplete');
+/** SEE ARTIFACTS /tmp/penilaian-ui.js - loading */
