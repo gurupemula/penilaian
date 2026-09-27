@@ -18,7 +18,7 @@ let SISWA = [];
 let SISWA_SOURCE = "fallback";
 let KURIKULUM = [];
 let KURIKULUM_SOURCE = "none";
-const state = { mapelId: "", tpId: "", kompetensiId: "", tpTabMapelId: null, rekapMapelId: "", rekapSemester: "kedua", expandedTpId: "" };
+const state = { mapelId: "", tpId: "", kompetensiId: "", tpTabMapelId: null, rekapMapelId: "", rekapSemester: "kedua", expandedTpId: "", inputSemester: "1" };
 const TITLES = { input: "Input Nilai", rekap: "Rekap", siswa: "Siswa", tp: "Kurikulum / TP" };
 
 function normalizeKurikulum(mapelList) {
@@ -63,6 +63,16 @@ function switchTab(tab) {
   if (tab === "rekap" && typeof renderTabRekap === "function") renderTabRekap();
 }
 
+/** Label semester TP berdasarkan bobot1/bobot2 */
+function labelSemesterTP(tp) {
+  const b1 = Number(tp.bobot1 != null ? tp.bobot1 : 0) || 0;
+  const b2 = Number(tp.bobot2 != null ? tp.bobot2 : 0) || 0;
+  if (b1 > 0 && b2 > 0) return "S1+S2";
+  if (b1 > 0) return "S1";
+  if (b2 > 0) return "S2";
+  return "—";
+}
+
 function fillMapelSelect() {
   const sel = document.getElementById("sel-mapel");
   if (!sel) return;
@@ -74,23 +84,80 @@ function fillTPSelect() {
   const sel = document.getElementById("sel-tp");
   if (!sel) return;
   const mapel = KURIKULUM.find((m) => m.id === state.mapelId);
-  if (!mapel) { sel.innerHTML = `<option value="">—</option>`; sel.disabled = true; return; }
+  if (!mapel) {
+    sel.innerHTML = `<option value="">—</option>`;
+    sel.disabled = true;
+    updateSemesterHint(0, 0);
+    return;
+  }
+
+  const sem = state.inputSemester || "1";
+  let allTp = mapel.tp || [];
+  if (typeof filterTPBySemester === "function") {
+    allTp = filterTPBySemester(allTp, sem);
+  } else {
+    allTp = allTp.filter((tp) => {
+      const b1 = Number(tp.bobot1) || 0;
+      const b2 = Number(tp.bobot2) || 0;
+      if (sem === "1") return b1 > 0;
+      if (sem === "2") return b2 > 0;
+      return b1 > 0 || b2 > 0;
+    });
+  }
+
+  const totalMapel = (mapel.tp || []).length;
+  updateSemesterHint(allTp.length, totalMapel);
+
   const groups = {};
-  (mapel.tp || []).forEach((tp) => {
+  allTp.forEach((tp) => {
     const e = tp.elemen || "Lainnya";
     if (!groups[e]) groups[e] = [];
     groups[e].push(tp);
   });
-  let html = `<option value="">— pilih TP —</option>`;
+
+  let html = `<option value="">— pilih TP (${allTp.length}) —</option>`;
   for (const [elemen, list] of Object.entries(groups)) {
     html += `<optgroup label="${escapeHtml(elemen)}">`;
     list.forEach((tp) => {
-      html += `<option value="${tp.id}">${escapeHtml(tp.kode)} — ${escapeHtml(short(tp.tujuan, 48))}</option>`;
+      const tag = labelSemesterTP(tp);
+      const bobot =
+        sem === "1"
+          ? Number(tp.bobot1) || 0
+          : sem === "2"
+            ? Number(tp.bobot2) || 0
+            : Number(tp.bobot1 || tp.bobot2) || 0;
+      html += `<option value="${tp.id}">${escapeHtml(tp.kode)} [${tag}] ${bobot}% — ${escapeHtml(short(tp.tujuan, 40))}</option>`;
     });
     html += `</optgroup>`;
   }
+  if (!allTp.length) {
+    html = `<option value="">— tidak ada TP untuk filter semester ini —</option>`;
+  }
   sel.innerHTML = html;
-  sel.disabled = false;
+  sel.disabled = allTp.length === 0;
+
+  if (state.tpId && !allTp.some((t) => t.id === state.tpId)) {
+    state.tpId = "";
+    state.kompetensiId = "";
+    fillKompetensiSelect();
+    updateInputWorkspace();
+  } else if (state.tpId) {
+    sel.value = state.tpId;
+  }
+}
+
+function updateSemesterHint(shown, total) {
+  const el = document.getElementById("semester-hint");
+  if (!el) return;
+  const sem = state.inputSemester || "1";
+  const label = sem === "1" ? "Semester 1" : sem === "2" ? "Semester 2" : "Semua semester";
+  if (!state.mapelId) {
+    el.textContent = "Pilih mapel. TP akan difilter menurut bobot S1/S2 di tab Kurikulum.";
+    return;
+  }
+  el.innerHTML =
+    `<strong>${label}</strong>: menampilkan <strong>${shown}</strong> dari ${total} TP ` +
+    `(hanya yang bobot ${sem === "kedua" ? "S1 atau S2" : sem === "1" ? "S1" : "S2"} &gt; 0 di Kurikulum).`;
 }
 
 function fillKompetensiSelect() {
@@ -138,6 +205,14 @@ async function renderNilaiSheet() {
   }
 }
 
+document.getElementById("sel-semester")?.addEventListener("change", (e) => {
+  state.inputSemester = e.target.value || "1";
+  state.tpId = "";
+  state.kompetensiId = "";
+  fillTPSelect();
+  fillKompetensiSelect();
+  updateInputWorkspace();
+});
 document.getElementById("sel-mapel")?.addEventListener("change", (e) => {
   state.mapelId = e.target.value; state.tpId = ""; state.kompetensiId = "";
   fillTPSelect(); fillKompetensiSelect(); updateInputWorkspace();
@@ -224,9 +299,9 @@ function renderTabTP() {
   if (!panel) return;
   const src = KURIKULUM_SOURCE === "firestore" ? "Firestore ✓" : KURIKULUM_SOURCE === "json" ? "JSON (belum di Firestore)" : "Kosong";
   document.getElementById("topbar-actions").innerHTML = `
-    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp" title="Ambil ulang data dari Firestore">Muat ulang</button>
-    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp" title="Isi dokumen yang belum ada">Seed (isi kosong)</button>
-    <button type="button" class="btn btn-secondary btn-sm" id="btn-seed-force-tp" title="Menimpa semua dengan default JSON">Seed ulang (timpa)</button>`;
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp">Muat ulang</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp">Seed (isi kosong)</button>
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-seed-force-tp">Seed ulang (timpa)</button>`;
 
   const mapelOpts = KURIKULUM.map((m) => `<option value="${m.id}">${escapeHtml(m.nama)}</option>`).join("");
   if (!state.tpTabMapelId && KURIKULUM.length) state.tpTabMapelId = KURIKULUM[0].id;
@@ -243,7 +318,7 @@ function renderTabTP() {
   const expandedId = state.expandedTpId || "";
 
   panel.innerHTML = `
-    <p class="page-desc">Kurikulum 5A · sumber: <strong>${src}</strong> · Simpan = permanen · Seed isi kosong tidak menimpa edit</p>
+    <p class="page-desc">Kurikulum 5A · sumber: <strong>${src}</strong> · Bobot S1/S2 menentukan TP yang muncul di Input Nilai</p>
     <div class="filters">
       <div class="ff"><label>Mapel</label><select id="sel-tp-mapel">${mapelOpts}</select></div>
       <div class="ff" style="justify-content:flex-end;gap:.35rem;flex-direction:row;align-items:center;min-width:auto">
@@ -320,7 +395,7 @@ function renderTabTP() {
         }).join("")}
       </tbody>
     </table></div>
-    <p class="hint">Klik <strong>Komp (n)</strong> untuk kelola kompetensi. Bobot 0% = tidak dipakai di semester itu.</p>`;
+    <p class="hint">Bobot 0 di S1 atau S2 = TP tidak muncul di filter Input Nilai semester tersebut.</p>`;
 
   document.getElementById("sel-tp-mapel").value = state.tpTabMapelId || (mapel && mapel.id) || "";
   document.getElementById("sel-tp-mapel").onchange = (e) => {
@@ -331,14 +406,11 @@ function renderTabTP() {
   document.getElementById("btn-refresh-tp").onclick = async () => {
     await loadKurikulum();
     renderTabTP();
-    showSuccess(KURIKULUM_SOURCE === "firestore" ? "Dimuat dari Firestore." : "Dimuat dari JSON (Firestore kosong).");
+    showSuccess(KURIKULUM_SOURCE === "firestore" ? "Dimuat dari Firestore." : "Dimuat dari JSON.");
   };
   document.getElementById("btn-seed-tp").onclick = () => handleSeedTP(false);
   document.getElementById("btn-seed-force-tp").onclick = () => handleSeedTP(true);
-
-  document.getElementById("btn-show-add-tp").onclick = () => {
-    document.getElementById("form-add-tp").classList.toggle("hidden");
-  };
+  document.getElementById("btn-show-add-tp").onclick = () => document.getElementById("form-add-tp").classList.toggle("hidden");
   document.getElementById("btn-create-tp").onclick = () => handleCreateTP();
 
   function refreshBobotPills() {
@@ -365,8 +437,7 @@ function renderTabTP() {
 
   panel.querySelectorAll(".btn-toggle-komp").forEach((btn) => {
     btn.onclick = () => {
-      const id = btn.dataset.tp;
-      state.expandedTpId = state.expandedTpId === id ? "" : id;
+      state.expandedTpId = state.expandedTpId === btn.dataset.tp ? "" : btn.dataset.tp;
       renderTabTP();
     };
   });
@@ -404,7 +475,7 @@ function renderTabTP() {
           tp.semester = semester; tp.tujuan = tujuan; tp.elemen = elemen;
         }
         KURIKULUM_SOURCE = "firestore";
-        showSuccess("TP disimpan permanen di Firestore.");
+        showSuccess("TP disimpan. Filter Input Nilai akan mengikuti bobot S1/S2 ini.");
         refreshBobotPills();
       } catch (e) {
         showError(e.message || "Gagal simpan TP.");
@@ -464,38 +535,21 @@ function renderTabTP() {
 async function handleCreateTP() {
   const mapel = KURIKULUM.find((m) => m.id === state.tpTabMapelId);
   if (!mapel) return showError("Pilih mapel dulu.");
-  if (typeof createTP !== "function") return showError("createTP tidak tersedia. Perbarui js/tp-db.js.");
-
+  if (typeof createTP !== "function") return showError("createTP tidak tersedia.");
   const kode = (document.getElementById("new-tp-kode")?.value || "").trim();
   const elemen = (document.getElementById("new-tp-elemen")?.value || "").trim();
   const tujuan = (document.getElementById("new-tp-tujuan")?.value || "").trim();
   const bobot1 = Number(document.getElementById("new-tp-b1")?.value) || 0;
   const bobot2 = Number(document.getElementById("new-tp-b2")?.value) || 0;
   if (!tujuan) return showError("Tujuan pembelajaran wajib diisi.");
-
   try {
-    const created = await createTP(
-      mapel.id,
-      {
-        kode: kode || undefined,
-        elemen,
-        tujuan,
-        bobot1,
-        bobot2,
-        mapelNama: mapel.nama,
-        mapelKode: mapel.kode,
-        mapelUrutan: mapel.urutan,
-      },
-      mapel.tp || []
-    );
+    const created = await createTP(mapel.id, {
+      kode: kode || undefined, elemen, tujuan, bobot1, bobot2,
+      mapelNama: mapel.nama, mapelKode: mapel.kode, mapelUrutan: mapel.urutan,
+    }, mapel.tp || []);
     if (!mapel.tp) mapel.tp = [];
     mapel.tp.push({
-      id: created.id,
-      kode: created.kode,
-      elemen,
-      tujuan,
-      bobot1,
-      bobot2,
+      id: created.id, kode: created.kode, elemen, tujuan, bobot1, bobot2,
       bobot: bobot1 || bobot2,
       semester: bobot1 > 0 && bobot2 === 0 ? "1" : bobot2 > 0 && bobot1 === 0 ? "2" : "kedua",
       kompetensi: [],
@@ -511,20 +565,14 @@ async function handleCreateTP() {
 
 async function handleCreateKompetensi(tpId) {
   if (!tpId) return;
-  if (typeof createKompetensi !== "function") return showError("createKompetensi tidak tersedia. Perbarui js/tp-db.js.");
+  if (typeof createKompetensi !== "function") return showError("createKompetensi tidak tersedia.");
   const inp = document.querySelector(`.new-komp-desc[data-tp="${tpId}"]`);
   const deskripsi = (inp?.value || "").trim();
   if (!deskripsi) return showError("Isi deskripsi kompetensi dulu.");
-
   const mapel = KURIKULUM.find((m) => m.id === state.tpTabMapelId);
   const tp = mapel && (mapel.tp || []).find((t) => t.id === tpId);
   try {
-    const created = await createKompetensi(
-      tpId,
-      mapel?.id || state.tpTabMapelId,
-      { deskripsi },
-      tp?.kompetensi || []
-    );
+    const created = await createKompetensi(tpId, mapel?.id || state.tpTabMapelId, { deskripsi }, tp?.kompetensi || []);
     if (tp) {
       if (!tp.kompetensi) tp.kompetensi = [];
       tp.kompetensi.push({ id: created.id, deskripsi, urutan: created.urutan });
@@ -619,9 +667,7 @@ async function handleSeedTP(force) {
   }
   if (force) {
     const ok = confirm(
-      "SEED ULANG akan MENIMPA semua bobot/tujuan yang sudah Anda ubah di Firestore\n" +
-      "dengan nilai DEFAULT dari file JSON.\n\n" +
-      "Perubahan yang sudah disimpan akan hilang.\n\nLanjutkan?"
+      "SEED ULANG akan MENIMPA semua bobot/tujuan di Firestore dengan default JSON.\n\nLanjutkan?"
     );
     if (!ok) return;
   }
@@ -630,11 +676,7 @@ async function handleSeedTP(force) {
     await loadKurikulum();
     renderTabTP();
     const written = r ? `mapel ${r.mapel || 0}, tp ${r.tp || 0}, lewati ${r.skipped || 0}` : "";
-    showSuccess(
-      force
-        ? `Seed ulang selesai (${written}). Data diganti dengan default JSON.`
-        : `Seed selesai (${written}). Dokumen yang sudah ada tidak diubah.`
-    );
+    showSuccess(force ? `Seed ulang selesai (${written}).` : `Seed selesai (${written}).`);
   } catch (e) {
     showError(formatFsError(e));
   }
@@ -643,5 +685,7 @@ async function handleSeedTP(force) {
 (async function init() {
   await Promise.all([loadSiswa(), loadKurikulum()]);
   fillMapelSelect();
+  const semSel = document.getElementById("sel-semester");
+  if (semSel) semSel.value = state.inputSemester || "1";
   switchTab("input");
 })();
