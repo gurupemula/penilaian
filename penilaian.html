@@ -37,6 +37,14 @@
         <section id="tab-input" class="tab-panel">
           <div class="filter-bar">
             <div class="ff">
+              <label>Semester</label>
+              <select id="sel-semester">
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+                <option value="kedua">Semua (S1+S2)</option>
+              </select>
+            </div>
+            <div class="ff">
               <label>Mapel</label>
               <select id="sel-mapel"></select>
             </div>
@@ -49,6 +57,7 @@
               <select id="sel-kompetensi" disabled><option value="">—</option></select>
             </div>
           </div>
+          <p class="hint" id="semester-hint" style="margin:-.35rem 0 .75rem">TP difilter menurut bobot S1/S2 di Kurikulum (bobot 0 = tidak dipakai semester itu).</p>
 
           <div id="input-workspace" class="hidden">
             <div class="toolbar-row">
@@ -78,7 +87,7 @@
           </div>
 
           <div id="input-empty" class="empty-hint">
-            Pilih Mapel → TP → Kompetensi pada filter di atas, lalu isi nilai seperti spreadsheet.
+            Pilih Semester → Mapel → TP → Kompetensi, lalu isi nilai seperti spreadsheet.
           </div>
         </section>
 
