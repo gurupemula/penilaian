@@ -39,6 +39,11 @@ async function fetchSiswaFromFirestore(kelas = KELAS_DEFAULT) {
   return list;
 }
 
+/** Alias yang dipakai penilaian-ui.js */
+async function fetchSiswa(kelas = KELAS_DEFAULT) {
+  return fetchSiswaFromFirestore(kelas);
+}
+
 function buildSiswaPayload(s, kelas, now) {
   return {
     nomorAbsen: s.nomorAbsen,
@@ -65,6 +70,8 @@ async function seedSiswaToFirestore(siswaList, options = {}) {
   const now = firebase.firestore.FieldValue.serverTimestamp();
   let written = 0;
   let skipped = 0;
+
+  // Firestore batch max 500; 25 siswa aman di satu batch
   const batch = db.batch();
 
   for (const s of siswaList) {
@@ -87,6 +94,19 @@ async function seedSiswaToFirestore(siswaList, options = {}) {
   }
   if (written > 0) await batch.commit();
   return { written, skipped };
+}
+
+/**
+ * seedSiswa(force) — dipanggil dari UI
+ * Muat data/siswa-5a.json lalu tulis ke Firestore
+ */
+async function seedSiswa(force = false) {
+  const res = await fetch("data/siswa-5a.json");
+  if (!res.ok) throw new Error("Gagal memuat data/siswa-5a.json (" + res.status + ")");
+  const data = await res.json();
+  const list = Array.isArray(data) ? data : data.siswa || [];
+  if (!list.length) throw new Error("File siswa-5a.json kosong.");
+  return seedSiswaToFirestore(list, { force: !!force, kelas: data.kelas || KELAS_DEFAULT });
 }
 
 async function updateSiswa(nisn, fields) {

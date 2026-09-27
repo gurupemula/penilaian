@@ -62,6 +62,11 @@ async function fetchKurikulumLengkap() {
   return result;
 }
 
+/** Alias untuk penilaian-ui.js */
+async function fetchKurikulum() {
+  return fetchKurikulumLengkap();
+}
+
 async function updateTP(tpId, fields) {
   await db.collection(COL_TP).doc(tpId).update({
     ...fields,
@@ -153,6 +158,18 @@ async function seedKurikulum(kurikulum, options = {}) {
     }
   }
   return { mapel: mapelN, tp: tpN, kompetensi: kompN, skipped };
+}
+
+/**
+ * seedTP(force) — alias UI: muat JSON lalu seedKurikulum
+ */
+async function seedTP(force = false) {
+  const res = await fetch("data/kurikulum-5a.json");
+  if (!res.ok) throw new Error("Gagal memuat data/kurikulum-5a.json (" + res.status + ")");
+  const data = await res.json();
+  const payload = Array.isArray(data) ? { mapel: data } : data;
+  if (!payload.mapel || !payload.mapel.length) throw new Error("File kurikulum-5a.json kosong.");
+  return seedKurikulum(payload, { force: !!force });
 }
 
 async function countMapel() {
