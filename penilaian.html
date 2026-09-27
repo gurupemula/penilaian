@@ -11,20 +11,101 @@
     <div class="brand">Guru Pemula</div>
     <div class="user-info">
       <span id="user-email">...</span>
-      <button class="btn btn-secondary" onclick="logout()" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">Keluar</button>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">Keluar</button>
     </div>
   </nav>
 
-  <div class="container">
-    <a href="dashboard.html" class="back-link">← Kembali ke Dashboard</a>
+  <div class="container container-wide">
+    <a href="dashboard.html" class="back-link">← Dashboard</a>
 
     <h1 class="page-title">Penilaian</h1>
-    <p class="page-desc">Fitur untuk menginput dan mengelola nilai siswa.</p>
+    <p class="page-desc">Input nilai siswa mengikuti alur: Mapel → TP → Kompetensi → Nilai.</p>
 
-    <div class="placeholder-box">
-      <h2>🚧 Sedang dalam pengembangan</h2>
-      <p>Halaman ini akan segera diisi dengan form input nilai, daftar siswa, dan fitur terkait penilaian.</p>
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="input">Input</button>
+      <button class="tab-btn" data-tab="rekap">Rekap</button>
+      <button class="tab-btn" data-tab="siswa">Siswa</button>
+      <button class="tab-btn" data-tab="tp">TP</button>
     </div>
+
+    <div id="success-msg" class="success-msg"></div>
+    <div id="error-msg" class="error-msg"></div>
+
+    <!-- ========== TAB INPUT ========== -->
+    <div id="tab-input" class="tab-panel">
+      <div class="note-box">
+        Data sementara masih <strong>mock</strong> (belum tersambung Firestore). Alur UI sudah mengikuti mekanisme offline.
+      </div>
+
+      <div class="breadcrumb" id="breadcrumb"></div>
+
+      <!-- Step 1: Pilih Mapel -->
+      <div id="step-mapel" class="step-section active">
+        <h2 class="page-desc" style="margin-bottom:1rem">1. Pilih Mata Pelajaran</h2>
+        <div class="choice-grid" id="mapel-list"></div>
+      </div>
+
+      <!-- Step 2: Pilih TP -->
+      <div id="step-tp" class="step-section">
+        <h2 class="page-desc" style="margin-bottom:1rem">2. Pilih Tujuan Pembelajaran (TP)</h2>
+        <div id="tp-list"></div>
+      </div>
+
+      <!-- Step 3: Pilih Kompetensi -->
+      <div id="step-kompetensi" class="step-section">
+        <h2 class="page-desc" style="margin-bottom:1rem">3. Pilih Kompetensi</h2>
+        <div class="choice-grid" id="kompetensi-list"></div>
+      </div>
+
+      <!-- Step 4: Input Nilai -->
+      <div id="step-nilai" class="step-section">
+        <h2 class="page-desc" style="margin-bottom:1rem">4. Isi Nilai Siswa</h2>
+        <div class="input-panel">
+          <div class="input-meta">
+            <div class="form-group">
+              <label for="tanggal">Tanggal penilaian</label>
+              <input type="date" id="tanggal" />
+            </div>
+            <div class="form-group">
+              <label for="catatan">Catatan (opsional)</label>
+              <input type="text" id="catatan" placeholder="Mis. Ulangan harian 1" />
+            </div>
+          </div>
+
+          <div class="siswa-nilai-list" id="siswa-nilai-list"></div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" id="btn-simpan" style="width:auto">Simpan Nilai</button>
+            <button type="button" class="btn btn-secondary" id="btn-batal" style="width:auto">Batal</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB LAIN (placeholder) ========== -->
+    <div id="tab-rekap" class="tab-panel" style="display:none">
+      <div class="placeholder-box">
+        <h2>Rekap</h2>
+        <p>Tabel siswa × TP dan riwayat kompetensi akan ditampilkan di sini.</p>
+      </div>
+    </div>
+    <div id="tab-siswa" class="tab-panel" style="display:none">
+      <div class="placeholder-box">
+        <h2>Siswa</h2>
+        <p>Daftar 25 siswa Kelas 5A. Nanti bisa diedit dari Firestore.</p>
+      </div>
+    </div>
+    <div id="tab-tp" class="tab-panel" style="display:none">
+      <div class="placeholder-box">
+        <h2>TP & Kompetensi</h2>
+        <p>Kelola Tujuan Pembelajaran dan kompetensi per mapel.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -32,6 +113,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/penilaian-calc.js"></script>
+  <script src="js/penilaian-ui.js"></script>
   <script>
     requireAuth();
     showUserEmail();
