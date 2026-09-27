@@ -1,4 +1,4 @@
-/* style.css */
+/* style.css — app shell + sheet tables */
 :root {
   --primary: #2563eb;
   --primary-soft: #dbeafe;
@@ -160,7 +160,7 @@ button, input, select, textarea { font: inherit; }
 .sheet .w-nis { width: 100px; }
 .sheet .w-jk { width: 72px; text-align: center; }
 .sheet .w-ttl { width: 148px; }
-.sheet .w-act { width: 168px; text-align: center; }
+.sheet .w-act { width: 180px; text-align: center; min-width: 160px; }
 .sheet .col-tujuan { width: auto; }
 .sheet .num {
   text-align: center; font-weight: 700; color: var(--primary);
@@ -231,12 +231,34 @@ button, input, select, textarea { font: inherit; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .sheet .w-act .btn-stack {
-  display: flex; flex-direction: column; gap: 0.3rem; align-items: stretch;
+  display: flex; flex-direction: column; gap: 0.35rem; align-items: stretch;
 }
 .sheet .w-act .btn-stack .btn {
-  width: 100%; white-space: nowrap; font-size: 0.75rem; padding: 0.35rem 0.45rem;
+  width: 100%; white-space: nowrap; font-size: 0.75rem; padding: 0.4rem 0.5rem;
 }
-.komp-panel:not(.hidden) { display: table-row; }
+.sheet .w-act .btn-toggle-komp {
+  background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 600;
+}
+.sheet .w-act .btn-toggle-komp:hover { background: #dbeafe; border-color: #93c5fd; }
+.sheet .w-act .btn-toggle-komp.is-open {
+  background: #1d4ed8; color: #fff; border-color: #1d4ed8;
+}
+.komp-panel td {
+  border-bottom: 1px solid var(--border) !important;
+  border-left: 4px solid #2563eb !important;
+  background: #f8fafc !important;
+  padding: 0.85rem 1rem !important;
+  vertical-align: top;
+}
+.komp-panel:not(.hidden) { display: table-row !important; }
+.komp-panel.hidden { display: none !important; }
+.komp-panel .komp-title {
+  font-size: 0.82rem; font-weight: 700; color: #1e40af;
+  margin-bottom: 0.55rem;
+}
+.komp-panel .komp-empty {
+  text-align: center; color: var(--muted); font-size: 0.82rem; padding: 0.65rem;
+}
 .rekap-scroll { max-height: calc(100vh - 260px); }
 .rekap-sheet { table-layout: auto; }
 .rekap-sheet .rekap-nama {
