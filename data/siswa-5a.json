@@ -1,0 +1,31 @@
+{
+  "kelas": "5A",
+  "updatedAt": "2026-08-15",
+  "siswa": [
+    { "nomorAbsen": 1, "nisn": "3153742941", "nama": "Abdurrahman Ar Ribery" },
+    { "nomorAbsen": 2, "nisn": "3162659714", "nama": "Abyan Nandana Khalif" },
+    { "nomorAbsen": 3, "nisn": "3150563992", "nama": "Adskhan Ibran Elfatih" },
+    { "nomorAbsen": 4, "nisn": "3159409800", "nama": "Afiya Nur Ataya Sandi" },
+    { "nomorAbsen": 5, "nisn": "3156365089", "nama": "Aisyah Afqohunnisa" },
+    { "nomorAbsen": 6, "nisn": "3150790933", "nama": "Akhdan Ziyad" },
+    { "nomorAbsen": 7, "nisn": "3161535657", "nama": "Alam Rayyan Fiyanto" },
+    { "nomorAbsen": 8, "nisn": "0169932726", "nama": "Arsyila Almahyira Azgefa" },
+    { "nomorAbsen": 9, "nisn": "3169474236", "nama": "Athifa Nur Pelangi" },
+    { "nomorAbsen": 10, "nisn": "3153495240", "nama": "Fairel Atharizz Calief" },
+    { "nomorAbsen": 11, "nisn": "3155825302", "nama": "Fatih Pratama Basuki" },
+    { "nomorAbsen": 12, "nisn": "3159944404", "nama": "Flora Baby Queen" },
+    { "nomorAbsen": 13, "nisn": "3155235740", "nama": "Gilang Aditya Ramadhan" },
+    { "nomorAbsen": 14, "nisn": "3169421033", "nama": "Ilham Ibrahim" },
+    { "nomorAbsen": 15, "nisn": "0137469444", "nama": "Inara Huwaida Ardhani" },
+    { "nomorAbsen": 16, "nisn": "3155739832", "nama": "Kinara Adisti Salsabila" },
+    { "nomorAbsen": 17, "nisn": "3164599601", "nama": "Kirana Hafizah Iqra Nasution" },
+    { "nomorAbsen": 18, "nisn": "3152422747", "nama": "Latifa Rafanda" },
+    { "nomorAbsen": 19, "nisn": "3152848251", "nama": "Meshya Belliza Utama" },
+    { "nomorAbsen": 20, "nisn": "3151303538", "nama": "Muhammad Ali Alfarizi" },
+    { "nomorAbsen": 21, "nisn": "3158326656", "nama": "Nayla Latifa" },
+    { "nomorAbsen": 22, "nisn": "3155846202", "nama": "Quenzino Satria Hadika" },
+    { "nomorAbsen": 23, "nisn": "3152660139", "nama": "Reynand Pratama" },
+    { "nomorAbsen": 24, "nisn": "3156646475", "nama": "Shakila Qiyana Shadiqah" },
+    { "nomorAbsen": 25, "nisn": "3158512331", "nama": "Shanum Meyra Rosadi" }
+  ]
+}
