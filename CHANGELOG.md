@@ -1,46 +1,31 @@
 # Changelog
 
-Semua perubahan penting pada proyek ini dicatat di sini.
-
 ---
 
 ## [Unreleased]
 
-### Ditambahkan
-- (simpan nilai ke Firestore, tab Rekap)
+- Simpan nilai ke Firestore, tab Rekap
+
+---
+
+## [0.5.1] - 2026-09-27
+
+### Diubah
+- **Redesign UI** — densitas tinggi, tipografi lebih kecil, minim scroll
+- Navbar 44px, tombol & form padat
+- Form nilai siswa: 2 kolom di layar lebar, baris ~32px
+- Tab TP: kartu ringkas, kompetensi collapsible, kontrol bobot/semester sebaris
+- Kartu pilihan mapel/TP lebih kecil, teks tujuan max 2 baris
 
 ---
 
 ## [0.5.0] - 2026-09-27
 
 ### Ditambahkan
-- `data/kurikulum-5a.json` — BI (10 TP), IPAS (8), PP (10), Seni Budaya (10) + kompetensi
-- Kompetensi IPAS & PP disusun dari rumusan TP revisi (belum ada di offline)
-- `js/tp-db.js` — Firestore mapel / tp / kompetensi + seed
-- Tab **TP**: seed kurikulum, edit bobot, semester, tujuan, deskripsi kompetensi
-- Edit **bobot antar cabang** Seni Budaya + indikator total 100%
-- Indikator total bobot TP per mapel (✓ / ⚠)
-
-### Diubah
-- Alur Input memakai kurikulum (Firestore atau JSON), bukan mock singkat
+- Kurikulum lengkap + tab kelola TP/bobot/kompetensi
 
 ---
 
-## [0.4.0] - 2026-09-27
-
-### Ditambahkan
-- Firestore collection `siswa` + seed
-
----
-
-## [0.3.x] - 2026-09-27
-
-### Ditambahkan
-- Data siswa 5A, UI 4 tahap, modul perhitungan, dokumentasi
-
----
-
-## [0.1.0] - 2026-09-27
-
-### Ditambahkan
-- Login & struktur awal Guru Pemula
+## [0.4.0] — siswa Firestore
+## [0.3.x] — UI input, calc, data siswa
+## [0.1.0] — login & struktur awal
