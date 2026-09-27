@@ -1,7 +1,5 @@
 /**
  * siswa-db.js — collection `siswa`, doc id = NISN
- * Fields: nomorAbsen, nisn, nis, nama, tempatLahir, tanggalLahir,
- *         jenisKelamin (L|P), alamat, kelas, aktif
  */
 
 const SISWA_COLLECTION = "siswa";
@@ -19,6 +17,11 @@ function mapSiswaDoc(doc) {
     tanggalLahir: d.tanggalLahir || "",
     jenisKelamin: d.jenisKelamin || "",
     alamat: d.alamat || "",
+    agama: d.agama || "",
+    namaAyah: d.namaAyah || "",
+    pekerjaanAyah: d.pekerjaanAyah || "",
+    namaIbu: d.namaIbu || "",
+    pekerjaanIbu: d.pekerjaanIbu || "",
     kelas: d.kelas || KELAS_DEFAULT,
     aktif: d.aktif !== false,
   };
@@ -34,6 +37,27 @@ async function fetchSiswaFromFirestore(kelas = KELAS_DEFAULT) {
   });
   list.sort((a, b) => a.nomorAbsen - b.nomorAbsen);
   return list;
+}
+
+function buildSiswaPayload(s, kelas, now) {
+  return {
+    nomorAbsen: s.nomorAbsen,
+    nisn: String(s.nisn),
+    nis: s.nis != null ? String(s.nis) : "",
+    nama: s.nama || "",
+    tempatLahir: s.tempatLahir || "",
+    tanggalLahir: s.tanggalLahir || "",
+    jenisKelamin: s.jenisKelamin || "",
+    alamat: s.alamat || "",
+    agama: s.agama || "",
+    namaAyah: s.namaAyah || "",
+    pekerjaanAyah: s.pekerjaanAyah || "",
+    namaIbu: s.namaIbu || "",
+    pekerjaanIbu: s.pekerjaanIbu || "",
+    kelas: s.kelas || kelas,
+    aktif: true,
+    updatedAt: now,
+  };
 }
 
 async function seedSiswaToFirestore(siswaList, options = {}) {
@@ -52,19 +76,7 @@ async function seedSiswaToFirestore(siswaList, options = {}) {
         continue;
       }
     }
-    const payload = {
-      nomorAbsen: s.nomorAbsen,
-      nisn: String(s.nisn),
-      nis: s.nis != null ? String(s.nis) : "",
-      nama: s.nama || "",
-      tempatLahir: s.tempatLahir || "",
-      tanggalLahir: s.tanggalLahir || "",
-      jenisKelamin: s.jenisKelamin || "",
-      alamat: s.alamat || "",
-      kelas,
-      aktif: true,
-      updatedAt: now,
-    };
+    const payload = buildSiswaPayload(s, kelas, now);
     if (force) {
       batch.set(ref, payload, { merge: true });
     } else {
@@ -86,6 +98,11 @@ async function updateSiswa(nisn, fields) {
     "tanggalLahir",
     "jenisKelamin",
     "alamat",
+    "agama",
+    "namaAyah",
+    "pekerjaanAyah",
+    "namaIbu",
+    "pekerjaanIbu",
     "kelas",
     "aktif",
   ];
