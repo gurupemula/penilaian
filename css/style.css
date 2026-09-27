@@ -177,7 +177,7 @@ button, input, select, textarea { font: inherit; }
 .sheet .w-nis { width: 100px; }
 .sheet .w-jk { width: 72px; text-align: center; }
 .sheet .w-ttl { width: 148px; }
-.sheet .w-act { width: 92px; text-align: center; }
+.sheet .w-act { width: 168px; text-align: center; }
 .sheet .col-tujuan { width: auto; }
 
 .sheet .num {
@@ -299,7 +299,6 @@ button, input, select, textarea { font: inherit; }
 .loading-overlay.show { display: flex; }
 .hidden { display: none !important; }
 
-/* —— Rekap —— */
 .rekap-scroll { max-height: calc(100vh - 260px); }
 .rekap-sheet { table-layout: auto; }
 .rekap-sheet .rekap-nama {
@@ -319,6 +318,26 @@ button, input, select, textarea { font: inherit; }
 .pred-b { color: #1d4ed8; }
 .pred-c { color: #b45309; }
 .pred-d { color: #b91c1c; }
+
+/* Aksi TP: tombol bertumpuk agar Kompetensi selalu terlihat */
+.sheet .w-act .btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: stretch;
+}
+.sheet .w-act .btn-stack .btn {
+  width: 100%;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.45rem;
+}
+.komp-panel td {
+  border-bottom: 1px solid var(--border) !important;
+}
+.komp-panel:not(.hidden) {
+  display: table-row;
+}
 
 @media (max-width: 900px) {
   .sidebar { transform: translateX(-100%); }
