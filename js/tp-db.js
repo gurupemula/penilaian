@@ -49,8 +49,6 @@ async function fetchKompetensiByTP(tpId) {
 async function fetchKurikulumLengkap() {
   let mapelList = await fetchMapel();
 
-  // Jika mapel kosong tapi collection tp ada data (hasil simpan partial),
-  // rekonstruksi mapel dari field mapelId di dokumen tp.
   if (!mapelList.length) {
     const tpSnap = await db.collection(COL_TP).get();
     if (tpSnap.empty) return [];
@@ -83,16 +81,10 @@ async function fetchKurikulumLengkap() {
   return result;
 }
 
-/** Alias untuk penilaian-ui.js */
 async function fetchKurikulum() {
   return fetchKurikulumLengkap();
 }
 
-/**
- * Simpan TP. set+merge agar tidak error jika dokumen belum ada.
- * Juga memastikan dokumen mapel induk ada, supaya load setelah refresh
- * tidak jatuh ke JSON default.
- */
 async function updateTP(tpId, fields) {
   const now = firebase.firestore.FieldValue.serverTimestamp();
   const data = { ...fields, updatedAt: now };
@@ -209,11 +201,6 @@ async function seedKurikulum(kurikulum, options = {}) {
   return { mapel: mapelN, tp: tpN, kompetensi: kompN, skipped };
 }
 
-/**
- * seedTP(force)
- * force=false → hanya isi dokumen yang BELUM ada (aman, tidak menimpa bobot yang sudah diedit)
- * force=true  → timpa semua dengan nilai default dari JSON (berbahaya)
- */
 async function seedTP(force = false) {
   const res = await fetch("data/kurikulum-5a.json");
   if (!res.ok) throw new Error("Gagal memuat data/kurikulum-5a.json (" + res.status + ")");
@@ -221,6 +208,104 @@ async function seedTP(force = false) {
   const payload = Array.isArray(data) ? { mapel: data } : data;
   if (!payload.mapel || !payload.mapel.length) throw new Error("File kurikulum-5a.json kosong.");
   return seedKurikulum(payload, { force: !!force });
+}
+
+function nextTpId(mapelId, existingTps) {
+  const prefix = String(mapelId) + "-tp";
+  let max = 0;
+  (existingTps || []).forEach((t) => {
+    const m = String(t.id || "").match(new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\d+)$", "i"));
+    if (m) max = Math.max(max, Number(m[1]));
+    const m2 = String(t.kode || "").match(/^TP(\d+)$/i);
+    if (m2) max = Math.max(max, Number(m2[1]));
+  });
+  return { id: prefix + (max + 1), kode: "TP" + (max + 1), urutan: max + 1 };
+}
+
+function nextKompId(tpId, existingKomps) {
+  const prefix = String(tpId) + "-k";
+  let max = 0;
+  (existingKomps || []).forEach((k) => {
+    const m = String(k.id || "").match(new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\d+)$", "i"));
+    if (m) max = Math.max(max, Number(m[1]));
+  });
+  return { id: prefix + (max + 1), urutan: max + 1 };
+}
+
+async function createTP(mapelId, fields, existingTps = []) {
+  if (!mapelId) throw new Error("mapelId wajib.");
+  const gen = nextTpId(mapelId, existingTps);
+  const id = fields.id || gen.id;
+  const kode = fields.kode || gen.kode;
+  const n = normalizeTP({
+    bobot1: fields.bobot1,
+    bobot2: fields.bobot2,
+    bobot: fields.bobot,
+    semester: fields.semester || "kedua",
+  });
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const data = {
+    mapelId: String(mapelId),
+    kode,
+    elemen: fields.elemen || "",
+    tujuan: fields.tujuan || "",
+    bobot1: n.bobot1,
+    bobot2: n.bobot2,
+    bobot: n.bobot1 || n.bobot2,
+    semester: fields.semester || "kedua",
+    urutan: fields.urutan != null ? fields.urutan : gen.urutan,
+    jp: fields.jp || 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (fields.cabang) data.cabang = fields.cabang;
+  await db.collection(COL_TP).doc(id).set(data, { merge: true });
+
+  const mRef = db.collection(COL_MAPEL).doc(String(mapelId));
+  if (!(await mRef.get()).exists) {
+    await mRef.set(
+      {
+        nama: fields.mapelNama || String(mapelId).toUpperCase(),
+        kode: fields.mapelKode || String(mapelId).toUpperCase(),
+        urutan: fields.mapelUrutan || 0,
+        createdAt: now,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+  }
+  return { id, kode, ...data };
+}
+
+async function createKompetensi(tpId, mapelId, fields, existingKomps = []) {
+  if (!tpId) throw new Error("tpId wajib.");
+  const gen = nextKompId(tpId, existingKomps);
+  const id = fields.id || gen.id;
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  const data = {
+    tpId: String(tpId),
+    mapelId: mapelId ? String(mapelId) : "",
+    deskripsi: (fields.deskripsi || "").trim(),
+    urutan: fields.urutan != null ? fields.urutan : gen.urutan,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (!data.deskripsi) throw new Error("Deskripsi kompetensi wajib.");
+  await db.collection(COL_KOMP).doc(id).set(data, { merge: true });
+  return { id, ...data };
+}
+
+async function deleteTP(tpId) {
+  const snap = await db.collection(COL_KOMP).where("tpId", "==", String(tpId)).get();
+  const batch = db.batch();
+  snap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(db.collection(COL_TP).doc(String(tpId)));
+  await batch.commit();
+  return { deletedKomp: snap.size };
+}
+
+async function deleteKompetensi(kompetensiId) {
+  await db.collection(COL_KOMP).doc(String(kompetensiId)).delete();
 }
 
 async function countMapel() {
