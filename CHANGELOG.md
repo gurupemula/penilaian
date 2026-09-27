@@ -1,31 +1,18 @@
 # Changelog
 
----
-
 ## [Unreleased]
+- Simpan nilai ke Firestore, matrix Rekap
 
-- Simpan nilai ke Firestore, tab Rekap
+## [0.6.0] - 2026-09-27
 
----
+### Redesign (bukan sekadar diperkecil)
+- **Sidebar** navigasi tetap (Input, Rekap, Siswa, Kurikulum)
+- **Input**: filter Mapel → TP → Kompetensi (dropdown), area kerja **tabel spreadsheet** (No | Nama | Nilai)
+- **Siswa**: tabel sheet (No | Nama | NISN)
+- **Kurikulum**: tabel editable (Kode | Elemen | Bobot | Semester | Tujuan/Kompetensi | Simpan)
+- Header sticky, baris tabel rapat seperti Excel
+- Mobile: sidebar bisa di-toggle
 
-## [0.5.1] - 2026-09-27
-
-### Diubah
-- **Redesign UI** — densitas tinggi, tipografi lebih kecil, minim scroll
-- Navbar 44px, tombol & form padat
-- Form nilai siswa: 2 kolom di layar lebar, baris ~32px
-- Tab TP: kartu ringkas, kompetensi collapsible, kontrol bobot/semester sebaris
-- Kartu pilihan mapel/TP lebih kecil, teks tujuan max 2 baris
-
----
-
-## [0.5.0] - 2026-09-27
-
-### Ditambahkan
-- Kurikulum lengkap + tab kelola TP/bobot/kompetensi
-
----
-
+## [0.5.x] — kurikulum + polish densitas
 ## [0.4.0] — siswa Firestore
-## [0.3.x] — UI input, calc, data siswa
-## [0.1.0] — login & struktur awal
+## [0.1–0.3] — fondasi
