@@ -24,7 +24,7 @@ function renderTabTP() {
   const expandedId = state.expandedTpId || "";
 
   panel.innerHTML = `
-    <p class="page-desc">Kurikulum 5A · sumber: <strong>${src}</strong> · Klik <strong>▸ Kompetensi</strong> di setiap baris TP untuk edit/tambah</p>
+    <p class="page-desc">Kurikulum 5A · sumber: <strong>${src}</strong> · Klik <strong>▸ Kompetensi</strong> di kolom Aksi untuk edit/tambah</p>
     <div class="filters">
       <div class="ff"><label>Mapel</label><select id="sel-tp-mapel">${mapelOpts}</select></div>
       <div class="ff" style="justify-content:flex-end;gap:.35rem;flex-direction:row;align-items:center;min-width:auto">
@@ -67,32 +67,36 @@ function renderTabTP() {
             <td class="w-act">
               <div class="btn-stack">
                 <button type="button" class="btn btn-primary btn-sm btn-save-tp">Simpan TP</button>
-                <button type="button" class="btn btn-secondary btn-sm btn-toggle-komp" data-tp="${tp.id}">${open ? "▾" : "▸"} Kompetensi (${nKomp})</button>
+                <button type="button" class="btn btn-sm btn-toggle-komp ${open ? "is-open" : ""}" data-tp="${tp.id}">
+                  ${open ? "▾ Tutup" : "▸"} Kompetensi (${nKomp})
+                </button>
               </div>
             </td>
           </tr>
           <tr class="komp-panel ${open ? "" : "hidden"}" data-komp-for="${tp.id}">
-            <td colspan="6" style="background:#f8fafc;padding:.75rem 1rem">
-              <div style="font-size:.8rem;font-weight:600;margin-bottom:.5rem;color:#64748b">Kompetensi — ${escapeHtml(tp.kode || tp.id)}</div>
-              <div class="table-scroll" style="max-height:none;box-shadow:none;border-radius:8px">
+            <td colspan="6">
+              <div class="komp-title">Kompetensi — ${escapeHtml(tp.kode || tp.id)} · edit / tambah / hapus di sini</div>
+              <div class="table-scroll" style="max-height:none;box-shadow:none;border-radius:8px;border:1px solid var(--border)">
                 <table class="sheet" style="table-layout:auto">
-                  <thead><tr><th style="width:40px">No</th><th>Deskripsi kompetensi</th><th class="w-act"></th></tr></thead>
+                  <thead><tr><th style="width:44px">No</th><th>Deskripsi kompetensi</th><th style="width:140px">Aksi</th></tr></thead>
                   <tbody>
-                    ${(tp.kompetensi || []).map((k, i) => `
+                    ${(tp.kompetensi || []).length
+                      ? (tp.kompetensi || []).map((k, i) => `
                       <tr data-komp-id="${k.id}">
                         <td class="num">${k.urutan || i + 1}</td>
-                        <td><input type="text" data-field="deskripsi" value="${escapeHtml(k.deskripsi || "")}" /></td>
-                        <td class="w-act">
+                        <td><input type="text" data-field="deskripsi" value="${escapeHtml(k.deskripsi || "")}" placeholder="Deskripsi…" /></td>
+                        <td style="white-space:nowrap">
                           <button type="button" class="btn btn-primary btn-sm btn-save-komp">Simpan</button>
-                          <button type="button" class="btn btn-ghost btn-sm btn-del-komp" title="Hapus">✕</button>
+                          <button type="button" class="btn btn-ghost btn-sm btn-del-komp" title="Hapus">✕ Hapus</button>
                         </td>
-                      </tr>`).join("") || `<tr><td colspan="3" class="cell-muted" style="text-align:center">Belum ada kompetensi — isi form di bawah lalu klik Tambah</td></tr>`}
+                      </tr>`).join("")
+                      : `<tr><td colspan="3" class="komp-empty">Belum ada kompetensi. Isi form di bawah lalu klik + Tambah.</td></tr>`}
                   </tbody>
                 </table>
               </div>
-              <div class="toolbar-row" style="margin:.65rem 0 0;padding:.5rem;box-shadow:none">
+              <div class="toolbar-row" style="margin:.7rem 0 0;padding:.55rem .65rem;box-shadow:none;background:#fff;border:1px dashed #93c5fd;border-radius:8px">
                 <div class="ff ff-grow"><label>Kompetensi baru</label>
-                  <input type="text" class="new-komp-desc" data-tp="${tp.id}" placeholder="Deskripsi kompetensi…" /></div>
+                  <input type="text" class="new-komp-desc" data-tp="${tp.id}" placeholder="Tulis deskripsi kompetensi…" /></div>
                 <div class="ff" style="min-width:auto;justify-content:flex-end">
                   <label>&nbsp;</label>
                   <button type="button" class="btn btn-primary btn-sm btn-add-komp" data-tp="${tp.id}">+ Tambah kompetensi</button>
@@ -103,7 +107,7 @@ function renderTabTP() {
         }).join("")}
       </tbody>
     </table></div>
-    <p class="hint">Bobot 0 di S1/S2 = TP tidak muncul di filter Input Nilai semester itu. Klik <strong>▸ Kompetensi</strong> untuk menambah/mengedit.</p>`;
+    <p class="hint">Klik <strong>▸ Kompetensi (n)</strong> di kolom Aksi untuk membuka panel edit/tambah/hapus kompetensi tiap TP. Bobot 0 di S1 atau S2 = TP tidak muncul di filter Input Nilai semester tersebut.</p>`;
 
   document.getElementById("sel-tp-mapel").value = state.tpTabMapelId || (mapel && mapel.id) || "";
   document.getElementById("sel-tp-mapel").onchange = (e) => {
@@ -189,7 +193,7 @@ function renderTabTP() {
           tp.semester = semester; tp.tujuan = tujuan; tp.elemen = elemen;
         }
         KURIKULUM_SOURCE = "firestore";
-        showSuccess("TP disimpan. Filter Input Nilai mengikuti bobot S1/S2.");
+        showSuccess("TP disimpan. Filter Input Nilai akan mengikuti bobot S1/S2 ini.");
         refreshBobotPills();
       } catch (e) {
         showError(e.message || "Gagal simpan TP.");
