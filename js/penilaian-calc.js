@@ -31,13 +31,11 @@ function nilaiAkhirSeniBudaya(data) {
   return { nilaiCabang, nilaiMapel: nilaiAkhirMapel(cabangAda) };
 }
 
-/** Bobot efektif TP untuk semester filter: "1" | "2" | "kedua" */
 function bobotTPUntukSemester(tp, semesterFilter) {
   const b1 = Number(tp.bobot1 != null ? tp.bobot1 : tp.bobot) || 0;
   const b2 = Number(tp.bobot2 != null ? tp.bobot2 : tp.bobot) || 0;
   if (semesterFilter === "1") return b1;
   if (semesterFilter === "2") return b2;
-  // setahun: rata-rata bobot yang aktif, atau max non-zero
   if (b1 > 0 && b2 > 0) return (b1 + b2) / 2;
   return b1 || b2;
 }
@@ -67,9 +65,89 @@ function cekTotalBobot(items) {
   return { total, ok: Math.abs(selisih) < 0.01, selisih };
 }
 
-/** Total bobot1 dan bobot2 terpisah untuk indikator UI */
 function cekBobotPerSemester(tpList) {
   const s1 = cekTotalBobot((tpList || []).map((t) => ({ bobot: Number(t.bobot1) || 0 })));
   const s2 = cekTotalBobot((tpList || []).map((t) => ({ bobot: Number(t.bobot2) || 0 })));
   return { s1, s2 };
+}
+
+function buildRekapMapel(siswaList, mapel, penilaianDocs, semesterFilter) {
+  const sem = semesterFilter || "kedua";
+  const tps = filterTPBySemester((mapel && mapel.tp) || [], sem);
+
+  const byKomp = {};
+  (penilaianDocs || []).forEach((doc) => {
+    if (!doc || !doc.kompetensiId || !doc.nilai) return;
+    const tpOk = tps.some((t) => t.id === doc.tpId);
+    if (!tpOk) return;
+    if (!byKomp[doc.kompetensiId]) byKomp[doc.kompetensiId] = {};
+    Object.entries(doc.nilai).forEach(([sid, n]) => {
+      const num = Number(n);
+      if (isNaN(num)) return;
+      if (!byKomp[doc.kompetensiId][sid]) byKomp[doc.kompetensiId][sid] = [];
+      byKomp[doc.kompetensiId][sid].push(num);
+    });
+  });
+
+  const columns = tps.map((tp) => ({
+    id: tp.id,
+    kode: tp.kode || tp.id,
+    elemen: tp.elemen || "",
+    bobot: bobotTPUntukSemester(tp, sem),
+    cabang: tp.cabang || null,
+  }));
+
+  const rows = (siswaList || []).map((s) => {
+    const sid = String(s.id || s.nisn);
+    const nilaiTP = {};
+    tps.forEach((tp) => {
+      const kompScores = (tp.kompetensi || []).map((k) => {
+        const list = (byKomp[k.id] && byKomp[k.id][sid]) || [];
+        return nilaiAkhirKompetensi(list);
+      });
+      nilaiTP[tp.id] = nilaiAkhirTP(kompScores);
+    });
+
+    let nilaiMapel = null;
+    const isSeni = mapel && mapel.kelompokBobot && Object.keys(mapel.kelompokBobot).length;
+    if (isSeni) {
+      const tpPerCabang = {};
+      tps.forEach((tp) => {
+        const cab = tp.cabang || "Lainnya";
+        if (!tpPerCabang[cab]) tpPerCabang[cab] = [];
+        tpPerCabang[cab].push({
+          nilai: nilaiTP[tp.id],
+          bobot: bobotTPUntukSemester(tp, sem),
+        });
+      });
+      const sb = nilaiAkhirSeniBudaya({
+        kelompokBobot: mapel.kelompokBobot,
+        tpPerCabang,
+      });
+      nilaiMapel = sb.nilaiMapel;
+    } else {
+      nilaiMapel = nilaiAkhirMapel(
+        tps.map((tp) => ({
+          nilai: nilaiTP[tp.id],
+          bobot: bobotTPUntukSemester(tp, sem),
+        }))
+      );
+    }
+
+    return {
+      siswaId: sid,
+      nomorAbsen: s.nomorAbsen,
+      nama: s.nama,
+      nilaiTP,
+      nilaiMapel,
+      predikat: predikat(nilaiMapel),
+    };
+  });
+
+  return { columns, rows, semester: sem, mapelId: mapel && mapel.id, mapelNama: mapel && mapel.nama };
+}
+
+function formatNilai(n) {
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, "");
 }
