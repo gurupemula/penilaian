@@ -2,57 +2,45 @@
 
 Semua perubahan penting pada proyek ini dicatat di sini.
 
-Format mengikuti [Keep a Changelog](https://keepachangelog.com/id/1.0.0/).
-
 ---
 
 ## [Unreleased]
 
 ### Ditambahkan
-- (simpan nilai ke Firestore, TP lengkap, tab Rekap)
+- (simpan nilai ke Firestore, tab Rekap)
+
+---
+
+## [0.5.0] - 2026-09-27
+
+### Ditambahkan
+- `data/kurikulum-5a.json` — BI (10 TP), IPAS (8), PP (10), Seni Budaya (10) + kompetensi
+- Kompetensi IPAS & PP disusun dari rumusan TP revisi (belum ada di offline)
+- `js/tp-db.js` — Firestore mapel / tp / kompetensi + seed
+- Tab **TP**: seed kurikulum, edit bobot, semester, tujuan, deskripsi kompetensi
+- Edit **bobot antar cabang** Seni Budaya + indikator total 100%
+- Indikator total bobot TP per mapel (✓ / ⚠)
+
+### Diubah
+- Alur Input memakai kurikulum (Firestore atau JSON), bukan mock singkat
 
 ---
 
 ## [0.4.0] - 2026-09-27
 
 ### Ditambahkan
-- `js/siswa-db.js` — fetch, seed, update collection Firestore `siswa`
-- Tab Siswa: tombol **Seed ke Firestore** dan **Muat ulang**
-- `docs/SETUP_FIRESTORE_SISWA.md` — panduan Rules + seed
-- Prioritas load siswa: Firestore → JSON → fallback
-
-### Diubah
-- `penilaian-ui.js` terhubung ke Firestore untuk data siswa
-- `penilaian.html` memuat `siswa-db.js`
+- Firestore collection `siswa` + seed
 
 ---
 
-## [0.3.1] - 2026-09-27
+## [0.3.x] - 2026-09-27
 
 ### Ditambahkan
-- `data/siswa-5a.json` — 25 siswa Kelas 5A
-- Tab Siswa menampilkan daftar + NISN
-
-### Diubah
-- Form input nilai memakai nama siswa asli (id = NISN)
-
----
-
-## [0.3.0] - 2026-09-27
-
-### Ditambahkan
-- Modul perhitungan + UI 4 tahap Input (mock)
-
----
-
-## [0.2.0] - 2026-09-27
-
-### Ditambahkan
-- Dokumentasi mekanisme, anti-regresi, data model
+- Data siswa 5A, UI 4 tahap, modul perhitungan, dokumentasi
 
 ---
 
 ## [0.1.0] - 2026-09-27
 
 ### Ditambahkan
-- Login, dashboard, struktur awal Guru Pemula
+- Login & struktur awal Guru Pemula
