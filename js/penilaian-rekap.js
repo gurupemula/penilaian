@@ -18,7 +18,7 @@ async function renderTabRekap() {
   ).join("");
 
   panel.innerHTML = `
-    <p class="page-desc">Rekap per siswa · rata-rata kompetensi → TP → mapel (bobot semester)</p>
+    <p class="page-desc">Rekap per siswa · sesi terakhir per kompetensi → rata-rata TP → mapel (bobot semester)</p>
     <div class="filters">
       <div class="ff">
         <label>Mapel</label>
@@ -144,5 +144,5 @@ async function fillRekapBody() {
         <tbody>${bodyRows}</tbody>
       </table>
     </div>
-    <p class="hint">Nilai TP = rata-rata kompetensi yang sudah dinilai. Nilai mapel = rata-rata tertimbang bobot TP (hanya TP yang ada nilainya).</p>`;
+    <p class="hint">Nilai kompetensi = <strong>sesi terakhir</strong> (bukan rata-rata multi-tanggal). Nilai TP = rata-rata kompetensi yang sudah dinilai. Nilai mapel = rata-rata tertimbang bobot TP.</p>`;
 }

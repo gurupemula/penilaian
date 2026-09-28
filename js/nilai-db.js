@@ -103,3 +103,31 @@ async function deletePenilaian(mapelId, tpId, kompetensiId, tanggal) {
   const id = penilaianDocId(mapelId, tpId, kompetensiId, tanggal);
   await db.collection(COL_PENILAIAN).doc(id).delete();
 }
+
+/**
+ * Hapus nilai satu siswa dari dokumen tanggal tertentu.
+ * Jika dokumen kosong setelah hapus, dokumen ikut dihapus.
+ */
+async function hapusNilaiSiswa(mapelId, tpId, kompetensiId, tanggal, siswaId) {
+  if (!mapelId || !tpId || !kompetensiId || !tanggal || !siswaId) {
+    throw new Error("Parameter hapus nilai tidak lengkap.");
+  }
+  const id = penilaianDocId(mapelId, tpId, kompetensiId, tanggal);
+  const ref = db.collection(COL_PENILAIAN).doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) return { deleted: false, empty: true };
+
+  const data = snap.data() || {};
+  const nilai = { ...(data.nilai || {}) };
+  const key = String(siswaId);
+  if (!(key in nilai)) return { deleted: false, empty: Object.keys(nilai).length === 0 };
+
+  delete nilai[key];
+  const now = firebase.firestore.FieldValue.serverTimestamp();
+  if (Object.keys(nilai).length === 0) {
+    await ref.delete();
+    return { deleted: true, empty: true, id };
+  }
+  await ref.set({ nilai, updatedAt: now }, { merge: true });
+  return { deleted: true, empty: false, id, remaining: Object.keys(nilai).length };
+}

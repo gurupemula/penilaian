@@ -45,8 +45,17 @@ function filterTPBySemester(tpList, semesterFilter) {
   return (tpList || []).filter((tp) => {
     const b1 = Number(tp.bobot1 != null ? tp.bobot1 : 0) || 0;
     const b2 = Number(tp.bobot2 != null ? tp.bobot2 : 0) || 0;
-    if (semesterFilter === "1") return b1 > 0 || tp.semester === "1" || tp.semester === "kedua";
-    if (semesterFilter === "2") return b2 > 0 || tp.semester === "2" || tp.semester === "kedua";
+    // Utamakan bobot S1/S2; field semester hanya fallback jika bobot belum diisi
+    if (semesterFilter === "1") {
+      if (b1 > 0) return true;
+      if (b1 === 0 && b2 === 0) return tp.semester === "1" || tp.semester === "kedua";
+      return false;
+    }
+    if (semesterFilter === "2") {
+      if (b2 > 0) return true;
+      if (b1 === 0 && b2 === 0) return tp.semester === "2" || tp.semester === "kedua";
+      return false;
+    }
     return true;
   });
 }
@@ -75,17 +84,25 @@ function buildRekapMapel(siswaList, mapel, penilaianDocs, semesterFilter) {
   const sem = semesterFilter || "kedua";
   const tps = filterTPBySemester((mapel && mapel.tp) || [], sem);
 
-  const byKomp = {};
-  (penilaianDocs || []).forEach((doc) => {
-    if (!doc || !doc.kompetensiId || !doc.nilai) return;
+  // Ambil HANYA sesi terbaru per kompetensi+siswa (bukan rata-rata multi-tanggal)
+  // Urut tanggal DESC → nilai pertama yang ditemukan = yang dipakai
+  const byKomp = {}; // kompetensiId -> { siswaId: number }
+  const sortedDocs = (penilaianDocs || [])
+    .filter((doc) => doc && doc.kompetensiId && doc.nilai)
+    .slice()
+    .sort((a, b) => String(b.tanggal || "").localeCompare(String(a.tanggal || "")));
+
+  sortedDocs.forEach((doc) => {
     const tpOk = tps.some((t) => t.id === doc.tpId);
     if (!tpOk) return;
     if (!byKomp[doc.kompetensiId]) byKomp[doc.kompetensiId] = {};
     Object.entries(doc.nilai).forEach(([sid, n]) => {
       const num = Number(n);
       if (isNaN(num)) return;
-      if (!byKomp[doc.kompetensiId][sid]) byKomp[doc.kompetensiId][sid] = [];
-      byKomp[doc.kompetensiId][sid].push(num);
+      const key = String(sid);
+      // sudah ada dari tanggal lebih baru → lewati
+      if (byKomp[doc.kompetensiId][key] !== undefined) return;
+      byKomp[doc.kompetensiId][key] = num;
     });
   });
 
@@ -102,8 +119,8 @@ function buildRekapMapel(siswaList, mapel, penilaianDocs, semesterFilter) {
     const nilaiTP = {};
     tps.forEach((tp) => {
       const kompScores = (tp.kompetensi || []).map((k) => {
-        const list = (byKomp[k.id] && byKomp[k.id][sid]) || [];
-        return nilaiAkhirKompetensi(list);
+        const v = byKomp[k.id] && byKomp[k.id][sid];
+        return v !== undefined && v !== null ? v : null;
       });
       nilaiTP[tp.id] = nilaiAkhirTP(kompScores);
     });
