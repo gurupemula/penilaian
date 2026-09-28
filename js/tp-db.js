@@ -130,7 +130,7 @@ async function updateMapel(mapelId, fields) {
 }
 
 async function seedKurikulum(kurikulum, options = {}) {
-  const { force = false } = options;
+  const { force = false, deskripsiOnly = false } = options;
   const now = firebase.firestore.FieldValue.serverTimestamp();
   let mapelN = 0,
     tpN = 0,
@@ -140,6 +140,7 @@ async function seedKurikulum(kurikulum, options = {}) {
   for (const m of kurikulum.mapel || []) {
     const mapelRef = db.collection(COL_MAPEL).doc(m.id);
     const mapelExists = (await mapelRef.get()).exists;
+
     if (!mapelExists || force) {
       const mapelData = {
         nama: m.nama,
@@ -152,7 +153,15 @@ async function seedKurikulum(kurikulum, options = {}) {
       if (!mapelExists) mapelData.createdAt = now;
       await mapelRef.set(mapelData, { merge: true });
       mapelN++;
-    } else skipped++;
+    } else if (deskripsiOnly) {
+      await mapelRef.set(
+        { nama: m.nama, kode: m.kode, urutan: m.urutan || 0, updatedAt: now },
+        { merge: true }
+      );
+      mapelN++;
+    } else {
+      skipped++;
+    }
 
     let tpUrutan = 0;
     for (const tp of m.tp || []) {
@@ -160,7 +169,37 @@ async function seedKurikulum(kurikulum, options = {}) {
       const n = normalizeTP({ ...tp });
       const tpRef = db.collection(COL_TP).doc(tp.id);
       const tpExists = (await tpRef.get()).exists;
-      if (!tpExists || force) {
+
+      if (!tpExists) {
+        const tpData = {
+          mapelId: m.id,
+          kode: tp.kode,
+          elemen: tp.elemen || "",
+          tujuan: tp.tujuan || "",
+          bobot1: n.bobot1,
+          bobot2: n.bobot2,
+          bobot: n.bobot1 || n.bobot2,
+          semester: tp.semester || "kedua",
+          urutan: tp.urutan || tpUrutan,
+          jp: tp.jp || 0,
+          createdAt: now,
+          updatedAt: now,
+        };
+        if (tp.cabang) tpData.cabang = tp.cabang;
+        await tpRef.set(tpData, { merge: true });
+        tpN++;
+      } else if (deskripsiOnly) {
+        const patch = {
+          kode: tp.kode,
+          elemen: tp.elemen || "",
+          tujuan: tp.tujuan || "",
+          urutan: tp.urutan || tpUrutan,
+          updatedAt: now,
+        };
+        if (tp.cabang) patch.cabang = tp.cabang;
+        await tpRef.set(patch, { merge: true });
+        tpN++;
+      } else if (force) {
         const tpData = {
           mapelId: m.id,
           kode: tp.kode,
@@ -175,39 +214,66 @@ async function seedKurikulum(kurikulum, options = {}) {
           updatedAt: now,
         };
         if (tp.cabang) tpData.cabang = tp.cabang;
-        if (!tpExists) tpData.createdAt = now;
         await tpRef.set(tpData, { merge: true });
         tpN++;
-      } else skipped++;
+      } else {
+        skipped++;
+      }
 
       for (const k of tp.kompetensi || []) {
         const kRef = db.collection(COL_KOMP).doc(k.id);
         const kExists = (await kRef.get()).exists;
-        if (!kExists || force) {
-          const kData = {
-            tpId: tp.id,
-            mapelId: m.id,
-            deskripsi: k.deskripsi,
-            urutan: k.urutan || 1,
-            updatedAt: now,
-          };
-          if (!kExists) kData.createdAt = now;
-          await kRef.set(kData, { merge: true });
+
+        if (!kExists) {
+          await kRef.set(
+            {
+              tpId: tp.id,
+              mapelId: m.id,
+              deskripsi: k.deskripsi,
+              urutan: k.urutan || 1,
+              createdAt: now,
+              updatedAt: now,
+            },
+            { merge: true }
+          );
           kompN++;
-        } else skipped++;
+        } else if (deskripsiOnly || force) {
+          await kRef.set(
+            {
+              tpId: tp.id,
+              mapelId: m.id,
+              deskripsi: k.deskripsi,
+              urutan: k.urutan || 1,
+              updatedAt: now,
+            },
+            { merge: true }
+          );
+          kompN++;
+        } else {
+          skipped++;
+        }
       }
     }
   }
   return { mapel: mapelN, tp: tpN, kompetensi: kompN, skipped };
 }
 
-async function seedTP(force = false) {
+/**
+ * seedTP(mode)
+ * mode=false | undefined → hanya isi dokumen yang BELUM ada (aman, tidak menimpa bobot)
+ * mode=true              → timpa SEMUA termasuk bobot (berbahaya)
+ * mode="deskripsi"       → update tujuan + deskripsi kompetensi saja; bobot tetap
+ */
+async function seedTP(mode = false) {
   const res = await fetch("data/kurikulum-5a.json");
   if (!res.ok) throw new Error("Gagal memuat data/kurikulum-5a.json (" + res.status + ")");
   const data = await res.json();
   const payload = Array.isArray(data) ? { mapel: data } : data;
   if (!payload.mapel || !payload.mapel.length) throw new Error("File kurikulum-5a.json kosong.");
-  return seedKurikulum(payload, { force: !!force });
+  if (mode === "deskripsi" || mode === "teks") {
+    return seedKurikulum(payload, { deskripsiOnly: true });
+  }
+  return seedKurikulum(payload, { force: !!mode });
 }
 
 function nextTpId(mapelId, existingTps) {
