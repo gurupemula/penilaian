@@ -6,7 +6,8 @@ function renderTabTP() {
   const src = KURIKULUM_SOURCE === "firestore" ? "Firestore ✓" : KURIKULUM_SOURCE === "json" ? "JSON (belum di Firestore)" : "Kosong";
   document.getElementById("topbar-actions").innerHTML = `
     <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-tp">Muat ulang</button>
-    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-tp">Seed (isi kosong)</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-seed-deskripsi" title="Perbarui tujuan & deskripsi; bobot S1/S2 tetap">Update deskripsi</button>
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-seed-tp">Seed (isi kosong)</button>
     <button type="button" class="btn btn-secondary btn-sm" id="btn-seed-force-tp">Seed ulang (timpa)</button>`;
 
   const mapelOpts = KURIKULUM.map((m) => `<option value="${m.id}">${escapeHtml(m.nama)}</option>`).join("");
@@ -107,7 +108,7 @@ function renderTabTP() {
         }).join("")}
       </tbody>
     </table></div>
-    <p class="hint">Klik <strong>▸ Kompetensi (n)</strong> di kolom Aksi untuk membuka panel edit/tambah/hapus kompetensi tiap TP. Bobot 0 di S1 atau S2 = TP tidak muncul di filter Input Nilai semester tersebut.</p>`;
+    <p class="hint">Klik <strong>▸ Kompetensi (n)</strong> di kolom Aksi untuk membuka panel. Tombol <strong>Update deskripsi</strong> memperbarui teks tanpa mengubah bobot.</p>`;
 
   document.getElementById("sel-tp-mapel").value = state.tpTabMapelId || (mapel && mapel.id) || "";
   document.getElementById("sel-tp-mapel").onchange = (e) => {
@@ -120,6 +121,7 @@ function renderTabTP() {
     renderTabTP();
     showSuccess(KURIKULUM_SOURCE === "firestore" ? "Dimuat dari Firestore." : "Dimuat dari JSON.");
   };
+  document.getElementById("btn-seed-deskripsi").onclick = () => handleSeedTP("deskripsi");
   document.getElementById("btn-seed-tp").onclick = () => handleSeedTP(false);
   document.getElementById("btn-seed-force-tp").onclick = () => handleSeedTP(true);
   document.getElementById("btn-show-add-tp").onclick = () => document.getElementById("form-add-tp").classList.toggle("hidden");
