@@ -12,14 +12,6 @@ function penilaianDocId(mapelId, tpId, kompetensiId, tanggal) {
 
 /**
  * Simpan / merge batch nilai.
- * @param {object} payload
- * @param {string} payload.mapelId
- * @param {string} payload.tpId
- * @param {string} payload.kompetensiId
- * @param {string} payload.tanggal  YYYY-MM-DD
- * @param {string} [payload.catatan]
- * @param {Object.<string, number>} payload.nilai  nisn → 0–100
- * @param {boolean} [payload.merge=true]  true = gabung dengan nilai lama di tanggal sama
  */
 async function savePenilaian(payload) {
   const { mapelId, tpId, kompetensiId, tanggal, catatan = "", nilai, merge = true } = payload;
@@ -74,26 +66,57 @@ async function getPenilaian(mapelId, tpId, kompetensiId, tanggal) {
  * Diurutkan tanggal terbaru dulu.
  */
 async function listPenilaianByKompetensi(mapelId, tpId, kompetensiId) {
-  const snap = await db
-    .collection(COL_PENILAIAN)
-    .where("mapelId", "==", mapelId)
-    .where("tpId", "==", tpId)
-    .where("kompetensiId", "==", kompetensiId)
-    .get();
-  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  list.sort((a, b) => String(b.tanggal || "").localeCompare(String(a.tanggal || "")));
-  return list;
+  try {
+    const snap = await db
+      .collection(COL_PENILAIAN)
+      .where("mapelId", "==", mapelId)
+      .where("tpId", "==", tpId)
+      .where("kompetensiId", "==", kompetensiId)
+      .orderBy("tanggal", "desc")
+      .get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    if (e && (e.code === "failed-precondition" || String(e.message || "").includes("index"))) {
+      console.warn("listPenilaianByKompetensi: index belum ada, fallback sort client", e.message);
+      const snap = await db
+        .collection(COL_PENILAIAN)
+        .where("mapelId", "==", mapelId)
+        .where("tpId", "==", tpId)
+        .where("kompetensiId", "==", kompetensiId)
+        .get();
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => String(b.tanggal || "").localeCompare(String(a.tanggal || "")));
+      return list;
+    }
+    throw e;
+  }
 }
 
-/** Batch terbaru untuk kompetensi (untuk prefill sheet) */
+/** Batch terbaru untuk kompetensi — 1 dokumen saja */
 async function getLatestPenilaian(mapelId, tpId, kompetensiId) {
-  const list = await listPenilaianByKompetensi(mapelId, tpId, kompetensiId);
-  return list[0] || null;
+  try {
+    const snap = await db
+      .collection(COL_PENILAIAN)
+      .where("mapelId", "==", mapelId)
+      .where("tpId", "==", tpId)
+      .where("kompetensiId", "==", kompetensiId)
+      .orderBy("tanggal", "desc")
+      .limit(1)
+      .get();
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() };
+  } catch (e) {
+    if (e && (e.code === "failed-precondition" || String(e.message || "").includes("index"))) {
+      console.warn("getLatestPenilaian: index belum ada, fallback", e.message);
+      const list = await listPenilaianByKompetensi(mapelId, tpId, kompetensiId);
+      return list[0] || null;
+    }
+    throw e;
+  }
 }
 
-/**
- * Semua penilaian satu mapel (untuk rekap).
- */
+/** Semua penilaian satu mapel (untuk rekap). */
 async function listPenilaianByMapel(mapelId) {
   const snap = await db.collection(COL_PENILAIAN).where("mapelId", "==", mapelId).get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -104,10 +127,7 @@ async function deletePenilaian(mapelId, tpId, kompetensiId, tanggal) {
   await db.collection(COL_PENILAIAN).doc(id).delete();
 }
 
-/**
- * Hapus nilai satu siswa dari dokumen tanggal tertentu.
- * Jika dokumen kosong setelah hapus, dokumen ikut dihapus.
- */
+/** Hapus nilai satu siswa dari dokumen tanggal tertentu. */
 async function hapusNilaiSiswa(mapelId, tpId, kompetensiId, tanggal, siswaId) {
   if (!mapelId || !tpId || !kompetensiId || !tanggal || !siswaId) {
     throw new Error("Parameter hapus nilai tidak lengkap.");
