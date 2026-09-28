@@ -46,20 +46,45 @@ async function fetchKompetensiByTP(tpId) {
   return list;
 }
 
+/**
+ * Muat kurikulum lengkap dengan 3 query paralel (bukan N+1 per TP).
+ * 1) mapel  2) semua tp  3) semua kompetensi → join di client.
+ */
 async function fetchKurikulumLengkap() {
-  let mapelList = await fetchMapel();
+  const [mapelSnap, tpSnap, kompSnap] = await Promise.all([
+    db.collection(COL_MAPEL).orderBy("urutan").get(),
+    db.collection(COL_TP).get(),
+    db.collection(COL_KOMP).get(),
+  ]);
 
-  if (!mapelList.length) {
-    const tpSnap = await db.collection(COL_TP).get();
-    if (tpSnap.empty) return [];
-    const byMapel = {};
-    tpSnap.docs.forEach((d) => {
-      const data = d.data();
-      const mid = data.mapelId || "unknown";
-      if (!byMapel[mid]) byMapel[mid] = [];
-      byMapel[mid].push(normalizeTP({ id: d.id, ...data }));
-    });
-    mapelList = Object.keys(byMapel).map((mid, i) => ({
+  let mapelList = mapelSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  const tpByMapel = {};
+  tpSnap.docs.forEach((d) => {
+    const data = normalizeTP({ id: d.id, ...d.data() });
+    const mid = data.mapelId || "unknown";
+    if (!tpByMapel[mid]) tpByMapel[mid] = [];
+    tpByMapel[mid].push(data);
+  });
+  Object.keys(tpByMapel).forEach((mid) => {
+    tpByMapel[mid].sort(
+      (a, b) => (a.urutan || 0) - (b.urutan || 0) || String(a.kode).localeCompare(String(b.kode))
+    );
+  });
+
+  const kompByTp = {};
+  kompSnap.docs.forEach((d) => {
+    const data = { id: d.id, ...d.data() };
+    const tid = data.tpId || "unknown";
+    if (!kompByTp[tid]) kompByTp[tid] = [];
+    kompByTp[tid].push(data);
+  });
+  Object.keys(kompByTp).forEach((tid) => {
+    kompByTp[tid].sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
+  });
+
+  if (!mapelList.length && tpSnap.size) {
+    mapelList = Object.keys(tpByMapel).map((mid, i) => ({
       id: mid,
       nama: mid.toUpperCase(),
       kode: mid.toUpperCase(),
@@ -68,17 +93,13 @@ async function fetchKurikulumLengkap() {
     }));
   }
 
-  const result = [];
-  for (const m of mapelList) {
-    const tps = await fetchTPByMapel(m.id);
-    const tpWithKomp = [];
-    for (const tp of tps) {
-      const kompetensi = await fetchKompetensiByTP(tp.id);
-      tpWithKomp.push({ ...tp, kompetensi });
-    }
-    result.push({ ...m, tp: tpWithKomp });
-  }
-  return result;
+  return mapelList.map((m) => {
+    const tps = (tpByMapel[m.id] || []).map((tp) => ({
+      ...tp,
+      kompetensi: kompByTp[tp.id] || [],
+    }));
+    return { ...m, tp: tps };
+  });
 }
 
 async function fetchKurikulum() {
@@ -137,6 +158,17 @@ async function seedKurikulum(kurikulum, options = {}) {
     kompN = 0,
     skipped = 0;
 
+  const ops = [];
+
+  async function flush() {
+    while (ops.length) {
+      const chunk = ops.splice(0, 400);
+      const batch = db.batch();
+      chunk.forEach(({ ref, data }) => batch.set(ref, data, { merge: true }));
+      await batch.commit();
+    }
+  }
+
   for (const m of kurikulum.mapel || []) {
     const mapelRef = db.collection(COL_MAPEL).doc(m.id);
     const mapelExists = (await mapelRef.get()).exists;
@@ -151,13 +183,13 @@ async function seedKurikulum(kurikulum, options = {}) {
       if (m.kelompokBobot) mapelData.kelompokBobot = m.kelompokBobot;
       if (m.catatanKompetensi) mapelData.catatanKompetensi = m.catatanKompetensi;
       if (!mapelExists) mapelData.createdAt = now;
-      await mapelRef.set(mapelData, { merge: true });
+      ops.push({ ref: mapelRef, data: mapelData });
       mapelN++;
     } else if (deskripsiOnly) {
-      await mapelRef.set(
-        { nama: m.nama, kode: m.kode, urutan: m.urutan || 0, updatedAt: now },
-        { merge: true }
-      );
+      ops.push({
+        ref: mapelRef,
+        data: { nama: m.nama, kode: m.kode, urutan: m.urutan || 0, updatedAt: now },
+      });
       mapelN++;
     } else {
       skipped++;
@@ -186,7 +218,7 @@ async function seedKurikulum(kurikulum, options = {}) {
           updatedAt: now,
         };
         if (tp.cabang) tpData.cabang = tp.cabang;
-        await tpRef.set(tpData, { merge: true });
+        ops.push({ ref: tpRef, data: tpData });
         tpN++;
       } else if (deskripsiOnly) {
         const patch = {
@@ -197,7 +229,7 @@ async function seedKurikulum(kurikulum, options = {}) {
           updatedAt: now,
         };
         if (tp.cabang) patch.cabang = tp.cabang;
-        await tpRef.set(patch, { merge: true });
+        ops.push({ ref: tpRef, data: patch });
         tpN++;
       } else if (force) {
         const tpData = {
@@ -214,7 +246,7 @@ async function seedKurikulum(kurikulum, options = {}) {
           updatedAt: now,
         };
         if (tp.cabang) tpData.cabang = tp.cabang;
-        await tpRef.set(tpData, { merge: true });
+        ops.push({ ref: tpRef, data: tpData });
         tpN++;
       } else {
         skipped++;
@@ -225,8 +257,9 @@ async function seedKurikulum(kurikulum, options = {}) {
         const kExists = (await kRef.get()).exists;
 
         if (!kExists) {
-          await kRef.set(
-            {
+          ops.push({
+            ref: kRef,
+            data: {
               tpId: tp.id,
               mapelId: m.id,
               deskripsi: k.deskripsi,
@@ -234,35 +267,37 @@ async function seedKurikulum(kurikulum, options = {}) {
               createdAt: now,
               updatedAt: now,
             },
-            { merge: true }
-          );
+          });
           kompN++;
         } else if (deskripsiOnly || force) {
-          await kRef.set(
-            {
+          ops.push({
+            ref: kRef,
+            data: {
               tpId: tp.id,
               mapelId: m.id,
               deskripsi: k.deskripsi,
               urutan: k.urutan || 1,
               updatedAt: now,
             },
-            { merge: true }
-          );
+          });
           kompN++;
         } else {
           skipped++;
         }
       }
+
+      if (ops.length >= 400) await flush();
     }
   }
+  await flush();
   return { mapel: mapelN, tp: tpN, kompetensi: kompN, skipped };
 }
 
 /**
  * seedTP(mode)
- * mode=false | undefined → hanya isi dokumen yang BELUM ada (aman, tidak menimpa bobot)
- * mode=true              → timpa SEMUA termasuk bobot (berbahaya)
- * mode="deskripsi"       → update tujuan + deskripsi kompetensi saja; bobot tetap
+ * mode=false → isi dokumen yang belum ada
+ * mode=true → timpa semua termasuk bobot
+ * mode="deskripsi" → update teks saja; bobot tetap
  */
 async function seedTP(mode = false) {
   const res = await fetch("data/kurikulum-5a.json");
@@ -282,7 +317,7 @@ function nextTpId(mapelId, existingTps) {
   (existingTps || []).forEach((t) => {
     const m = String(t.id || "").match(new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\d+)$", "i"));
     if (m) max = Math.max(max, Number(m[1]));
-    const m2 = String(t.kode || "").match(/^TP(\d+)$/i);
+    const m2 = String(t.kode || "").match(/^TP(\\d+)$/i);
     if (m2) max = Math.max(max, Number(m2[1]));
   });
   return { id: prefix + (max + 1), kode: "TP" + (max + 1), urutan: max + 1 };
