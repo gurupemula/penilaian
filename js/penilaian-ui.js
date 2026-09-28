@@ -63,7 +63,6 @@ function switchTab(tab) {
   if (tab === "rekap" && typeof renderTabRekap === "function") renderTabRekap();
 }
 
-/** Label semester TP berdasarkan bobot1/bobot2 */
 function labelSemesterTP(tp) {
   const b1 = Number(tp.bobot1 != null ? tp.bobot1 : 0) || 0;
   const b2 = Number(tp.bobot2 != null ? tp.bobot2 : 0) || 0;
@@ -294,8 +293,6 @@ function renderTabSiswa() {
   });
 }
 
-/* renderTabTP, handleCreateTP, handleCreateKompetensi → js/penilaian-tp-tab.js */
-
 function cekBobotSemester(tpList) {
   if (typeof cekBobotPerSemester === "function") return cekBobotPerSemester(tpList);
   return { s1: { total: 0, ok: true }, s2: { total: 0, ok: true } };
@@ -371,22 +368,38 @@ async function handleSeedSiswa(force) {
   } catch (e) { showError(formatFsError(e)); }
 }
 
-async function handleSeedTP(force) {
+async function handleSeedTP(mode) {
   if (typeof seedTP !== "function" && typeof seedKurikulum !== "function") {
     return showError("seed kurikulum tidak tersedia.");
   }
-  if (force) {
+  if (mode === true) {
     const ok = confirm(
       "SEED ULANG akan MENIMPA semua bobot/tujuan di Firestore dengan default JSON.\n\nLanjutkan?"
     );
     if (!ok) return;
+  } else if (mode === "deskripsi") {
+    const ok = confirm(
+      "Update deskripsi: memperbarui tujuan TP & deskripsi kompetensi dari JSON.\n\n" +
+      "Bobot S1/S2 yang sudah Anda atur TIDAK diubah.\n" +
+      "TP/kompetensi baru (mis. Matematika) akan ditambahkan.\n\nLanjutkan?"
+    );
+    if (!ok) return;
   }
   try {
-    const r = typeof seedTP === "function" ? await seedTP(force) : await seedKurikulum(force);
+    if (typeof seedTP !== "function") return showError("seedTP tidak tersedia.");
+    const r = await seedTP(mode);
     await loadKurikulum();
     renderTabTP();
-    const written = r ? `mapel ${r.mapel || 0}, tp ${r.tp || 0}, lewati ${r.skipped || 0}` : "";
-    showSuccess(force ? `Seed ulang selesai (${written}).` : `Seed selesai (${written}).`);
+    const written = r
+      ? `mapel ${r.mapel || 0}, tp ${r.tp || 0}, komp ${r.kompetensi || 0}, lewati ${r.skipped || 0}`
+      : "";
+    if (mode === "deskripsi") {
+      showSuccess(`Deskripsi diperbarui; bobot tetap. (${written})`);
+    } else if (mode === true) {
+      showSuccess(`Seed ulang selesai (${written}).`);
+    } else {
+      showSuccess(`Seed selesai (${written}).`);
+    }
   } catch (e) {
     showError(formatFsError(e));
   }
