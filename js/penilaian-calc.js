@@ -45,7 +45,6 @@ function filterTPBySemester(tpList, semesterFilter) {
   return (tpList || []).filter((tp) => {
     const b1 = Number(tp.bobot1 != null ? tp.bobot1 : 0) || 0;
     const b2 = Number(tp.bobot2 != null ? tp.bobot2 : 0) || 0;
-    // Utamakan bobot S1/S2; field semester hanya fallback jika bobot belum diisi
     if (semesterFilter === "1") {
       if (b1 > 0) return true;
       if (b1 === 0 && b2 === 0) return tp.semester === "1" || tp.semester === "kedua";
@@ -85,24 +84,22 @@ function buildRekapMapel(siswaList, mapel, penilaianDocs, semesterFilter) {
   const tps = filterTPBySemester((mapel && mapel.tp) || [], sem);
 
   // Ambil HANYA sesi terbaru per kompetensi+siswa (bukan rata-rata multi-tanggal)
-  // Urut tanggal DESC → nilai pertama yang ditemukan = yang dipakai
-  const byKomp = {}; // kompetensiId -> { siswaId: number }
+  const byKomp = {};
+  const tpIdSet = new Set(tps.map((t) => t.id));
   const sortedDocs = (penilaianDocs || [])
-    .filter((doc) => doc && doc.kompetensiId && doc.nilai)
+    .filter((doc) => doc && doc.kompetensiId && doc.nilai && tpIdSet.has(doc.tpId))
     .slice()
     .sort((a, b) => String(b.tanggal || "").localeCompare(String(a.tanggal || "")));
 
   sortedDocs.forEach((doc) => {
-    const tpOk = tps.some((t) => t.id === doc.tpId);
-    if (!tpOk) return;
     if (!byKomp[doc.kompetensiId]) byKomp[doc.kompetensiId] = {};
+    const bucket = byKomp[doc.kompetensiId];
     Object.entries(doc.nilai).forEach(([sid, n]) => {
       const num = Number(n);
       if (isNaN(num)) return;
       const key = String(sid);
-      // sudah ada dari tanggal lebih baru → lewati
-      if (byKomp[doc.kompetensiId][key] !== undefined) return;
-      byKomp[doc.kompetensiId][key] = num;
+      if (bucket[key] !== undefined) return;
+      bucket[key] = num;
     });
   });
 

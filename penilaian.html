@@ -57,7 +57,7 @@
               <select id="sel-kompetensi" disabled><option value="">—</option></select>
             </div>
           </div>
-          <p class="hint" id="semester-hint" style="margin:-.35rem 0 .75rem">TP difilter menurut bobot S1/S2 di Kurikulum.</p>
+          <p class="hint" id="semester-hint" style="margin:-.35rem 0 .75rem">TP difilter menurut bobot S1/S2 di Kurikulum (bobot 0 = tidak dipakai semester itu).</p>
 
           <div id="input-workspace" class="hidden">
             <div class="toolbar-row">
@@ -100,18 +100,19 @@
 
   <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/siswa-db.js"></script>
-  <script src="js/tp-db.js"></script>
-  <script src="js/nilai-db.js"></script>
-  <script src="js/penilaian-calc.js"></script>
-  <script src="js/penilaian-rekap.js"></script>
-  <script src="js/penilaian-tp-tab.js"></script>
-  <script src="js/penilaian-ui.js"></script>
-  <script>requireAuth(); showUserEmail();</script>
+  <!-- defer: unduh paralel, eksekusi berurutan setelah HTML siap -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script defer src="js/firebase-config.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/siswa-db.js"></script>
+  <script defer src="js/tp-db.js"></script>
+  <script defer src="js/nilai-db.js"></script>
+  <script defer src="js/penilaian-calc.js"></script>
+  <script defer src="js/penilaian-rekap.js"></script>
+  <script defer src="js/penilaian-tp-tab.js"></script>
+  <script defer src="js/penilaian-ui.js"></script>
+  <script defer src="js/penilaian-boot.js"></script>
 </body>
 </html>

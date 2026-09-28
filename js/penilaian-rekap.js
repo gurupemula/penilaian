@@ -1,4 +1,12 @@
-/** penilaian-rekap.js — tab Rekap per-siswa */
+/** penilaian-rekap.js — tab Rekap per-siswa (cache + partial re-render) */
+
+/** Cache dokumen penilaian per mapel agar ganti semester tidak fetch ulang */
+const _rekapDocsCache = Object.create(null); // mapelId -> { docs, at }
+
+function invalidateRekapCache(mapelId) {
+  if (mapelId) delete _rekapDocsCache[mapelId];
+  else Object.keys(_rekapDocsCache).forEach((k) => delete _rekapDocsCache[k]);
+}
 
 async function renderTabRekap() {
   const panel = document.getElementById("tab-rekap");
@@ -12,43 +20,60 @@ async function renderTabRekap() {
 
   if (!state.rekapMapelId && KURIKULUM.length) state.rekapMapelId = KURIKULUM[0].id;
 
-  const mapelOpts = KURIKULUM.map(
-    (m) =>
-      `<option value="${m.id}" ${m.id === state.rekapMapelId ? "selected" : ""}>${escapeHtml(m.nama)}</option>`
-  ).join("");
+  // Shell filter hanya dibangun sekali; ganti mapel/semester hanya isi body
+  if (!panel.querySelector("#sel-rekap-mapel")) {
+    const mapelOpts = KURIKULUM.map(
+      (m) =>
+        `<option value="${m.id}" ${m.id === state.rekapMapelId ? "selected" : ""}>${escapeHtml(m.nama)}</option>`
+    ).join("");
 
-  panel.innerHTML = `
-    <p class="page-desc">Rekap per siswa · sesi terakhir per kompetensi → rata-rata TP → mapel (bobot semester)</p>
-    <div class="filters">
-      <div class="ff">
-        <label>Mapel</label>
-        <select id="sel-rekap-mapel">${mapelOpts || '<option value="">— tidak ada mapel —</option>'}</select>
+    panel.innerHTML = `
+      <p class="page-desc">Rekap per siswa · sesi terakhir per kompetensi → rata-rata TP → mapel (bobot semester)</p>
+      <div class="filters">
+        <div class="ff">
+          <label>Mapel</label>
+          <select id="sel-rekap-mapel">${mapelOpts || '<option value="">— tidak ada mapel —</option>'}</select>
+        </div>
+        <div class="ff">
+          <label>Semester</label>
+          <select id="sel-rekap-sem">
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+            <option value="kedua">Setahun</option>
+          </select>
+        </div>
       </div>
-      <div class="ff">
-        <label>Semester</label>
-        <select id="sel-rekap-sem">
-          <option value="1" ${state.rekapSemester === "1" ? "selected" : ""}>Semester 1</option>
-          <option value="2" ${state.rekapSemester === "2" ? "selected" : ""}>Semester 2</option>
-          <option value="kedua" ${state.rekapSemester === "kedua" ? "selected" : ""}>Setahun</option>
-        </select>
-      </div>
-    </div>
-    <div id="rekap-body"><p class="hint">Memuat…</p></div>`;
+      <div id="rekap-body"><p class="hint">Memuat…</p></div>`;
 
-  document.getElementById("sel-rekap-mapel").onchange = (e) => {
-    state.rekapMapelId = e.target.value;
-    renderTabRekap();
-  };
-  document.getElementById("sel-rekap-sem").onchange = (e) => {
-    state.rekapSemester = e.target.value;
-    renderTabRekap();
-  };
-  document.getElementById("btn-refresh-rekap").onclick = () => renderTabRekap();
+    document.getElementById("sel-rekap-mapel").onchange = (e) => {
+      state.rekapMapelId = e.target.value;
+      fillRekapBody({ forceFetch: false });
+    };
+    document.getElementById("sel-rekap-sem").onchange = (e) => {
+      state.rekapSemester = e.target.value;
+      // semester hanya filter client — tidak perlu fetch ulang
+      fillRekapBody({ forceFetch: false });
+    };
+  } else {
+    const sm = document.getElementById("sel-rekap-mapel");
+    const ss = document.getElementById("sel-rekap-sem");
+    if (sm && sm.value !== state.rekapMapelId) sm.value = state.rekapMapelId;
+    if (ss && ss.value !== state.rekapSemester) ss.value = state.rekapSemester;
+  }
 
-  await fillRekapBody();
+  const ss = document.getElementById("sel-rekap-sem");
+  if (ss) ss.value = state.rekapSemester || "kedua";
+
+  document.getElementById("btn-refresh-rekap").onclick = () => {
+    invalidateRekapCache(state.rekapMapelId);
+    fillRekapBody({ forceFetch: true });
+  };
+
+  await fillRekapBody({ forceFetch: false });
 }
 
-async function fillRekapBody() {
+async function fillRekapBody(opts) {
+  const forceFetch = opts && opts.forceFetch;
   const body = document.getElementById("rekap-body");
   if (!body) return;
 
@@ -62,14 +87,22 @@ async function fillRekapBody() {
     return;
   }
 
+  body.innerHTML = `<p class="hint">Memuat…</p>`;
+
   let docs = [];
-  try {
-    if (typeof listPenilaianByMapel === "function") {
-      docs = await listPenilaianByMapel(mapel.id);
+  const cached = _rekapDocsCache[mapel.id];
+  if (!forceFetch && cached && Array.isArray(cached.docs)) {
+    docs = cached.docs;
+  } else {
+    try {
+      if (typeof listPenilaianByMapel === "function") {
+        docs = await listPenilaianByMapel(mapel.id);
+      }
+      _rekapDocsCache[mapel.id] = { docs, at: Date.now() };
+    } catch (e) {
+      body.innerHTML = `<div class="empty-hint">Gagal memuat penilaian: ${escapeHtml(formatFsError(e))}</div>`;
+      return;
     }
-  } catch (e) {
-    body.innerHTML = `<div class="empty-hint">Gagal memuat penilaian: ${escapeHtml(formatFsError(e))}</div>`;
-    return;
   }
 
   if (typeof buildRekapMapel !== "function") {
