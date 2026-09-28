@@ -390,10 +390,10 @@ function formatFsError(e) {
 function short(s, n) { s = String(s || ""); return s.length <= n ? s : s.slice(0, n - 1) + "…"; }
 function escapeHtml(s) {
   return String(s ?? "")
-    .replace(/&/g, "&" + "amp;")
-    .replace(/</g, "&" + "lt;")
-    .replace(/>/g, "&" + "gt;")
-    .replace(/"/g, "&" + "quot;");
+    .replace(/&/g, "\u0026amp;")
+    .replace(/</g, "\u0026lt;")
+    .replace(/>/g, "\u0026gt;")
+    .replace(/"/g, "\u0026quot;");
 }
 function showError(msg) {
   const el = document.getElementById("error-msg") || document.getElementById("topbar-actions");
