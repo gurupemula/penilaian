@@ -156,7 +156,7 @@ button, input, select, textarea { font: inherit; }
 .sheet .w-kode { width: 64px; }
 .sheet .w-elemen { width: 120px; }
 .sheet .w-bobot { width: 100px; text-align: center; }
-.sheet .w-nilai { width: 88px; text-align: center; }
+.sheet .w-nilai { width: 100px; text-align: center; }
 .sheet .w-nis { width: 100px; }
 .sheet .w-jk { width: 72px; text-align: center; }
 .sheet .w-ttl { width: 148px; }
@@ -273,4 +273,35 @@ button, input, select, textarea { font: inherit; }
   .sidebar.open { transform: translateX(0); }
   .app-main { margin-left: 0; }
   .sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; }
+}
+
+/* Input nilai: cell + tombol hapus */
+.nilai-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+}
+.nilai-cell input[type="number"] {
+  width: 4.2rem;
+  text-align: center;
+}
+.btn-clear-nilai {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.btn-clear-nilai:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.btn-clear-nilai:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
