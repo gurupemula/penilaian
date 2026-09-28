@@ -20,7 +20,6 @@ async function renderTabRekap() {
 
   if (!state.rekapMapelId && KURIKULUM.length) state.rekapMapelId = KURIKULUM[0].id;
 
-  // Shell filter hanya dibangun sekali; ganti mapel/semester hanya isi body
   if (!panel.querySelector("#sel-rekap-mapel")) {
     const mapelOpts = KURIKULUM.map(
       (m) =>
@@ -51,7 +50,6 @@ async function renderTabRekap() {
     };
     document.getElementById("sel-rekap-sem").onchange = (e) => {
       state.rekapSemester = e.target.value;
-      // semester hanya filter client — tidak perlu fetch ulang
       fillRekapBody({ forceFetch: false });
     };
   } else {
@@ -94,6 +92,7 @@ async function fillRekapBody(opts) {
   if (!forceFetch && cached && Array.isArray(cached.docs)) {
     docs = cached.docs;
   } else {
+    if (typeof showLoading === "function") showLoading();
     try {
       if (typeof listPenilaianByMapel === "function") {
         docs = await listPenilaianByMapel(mapel.id);
@@ -102,6 +101,8 @@ async function fillRekapBody(opts) {
     } catch (e) {
       body.innerHTML = `<div class="empty-hint">Gagal memuat penilaian: ${escapeHtml(formatFsError(e))}</div>`;
       return;
+    } finally {
+      if (typeof hideLoading === "function") hideLoading();
     }
   }
 
