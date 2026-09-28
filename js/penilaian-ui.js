@@ -231,15 +231,20 @@ async function renderNilaiSheet() {
     </tr>`;
   }).join("");
 
-  tbody.querySelectorAll(".btn-clear-nilai").forEach((btn) => {
-    btn.onclick = () => handleClearNilaiSiswa(btn.dataset.siswa);
-  });
-  tbody.querySelectorAll("input[data-siswa]").forEach((inp) => {
-    inp.addEventListener("input", () => {
-      const b = tbody.querySelector(`.btn-clear-nilai[data-siswa="${inp.dataset.siswa}"]`);
+  // Event delegation (1 listener) — hindari N addEventListener per render
+  if (!tbody._nilaiDelegated) {
+    tbody._nilaiDelegated = true;
+    tbody.addEventListener("click", (e) => {
+      const btn = e.target.closest(".btn-clear-nilai");
+      if (btn && !btn.disabled) handleClearNilaiSiswa(btn.dataset.siswa);
+    });
+    tbody.addEventListener("input", (e) => {
+      const inp = e.target;
+      if (!inp.matches || !inp.matches("input[data-siswa]")) return;
+      const b = inp.closest(".nilai-cell")?.querySelector(".btn-clear-nilai");
       if (b) b.disabled = inp.value.trim() === "";
     });
-  });
+  }
 
   const info = document.getElementById("nilai-session-info");
   if (info) {
@@ -275,6 +280,7 @@ async function handleClearNilaiSiswa(siswaId) {
   try {
     if (typeof hapusNilaiSiswa === "function") {
       const r = await hapusNilaiSiswa(state.mapelId, state.tpId, state.kompetensiId, tanggal, siswaId);
+      if (typeof invalidateRekapCache === "function") invalidateRekapCache(state.mapelId);
       if (r && r.deleted) {
         showSuccess(`Nilai ${nama} dihapus.`);
       } else {
@@ -334,6 +340,7 @@ document.getElementById("btn-simpan")?.addEventListener("click", async () => {
   try {
     if (typeof savePenilaian !== "function") throw new Error("Modul nilai-db belum dimuat.");
     const result = await savePenilaian({ mapelId: state.mapelId, tpId: state.tpId, kompetensiId: state.kompetensiId, tanggal, catatan, nilai: nilaiMap, merge: true });
+    if (typeof invalidateRekapCache === "function") invalidateRekapCache(state.mapelId);
     showSuccess(result.isNew ? `Nilai tersimpan di Firestore (${result.written} siswa).` : `Nilai diperbarui di Firestore (${result.written} diisi, total ${result.count} siswa).`);
     await renderNilaiSheet();
   } catch (e) { showError(formatFsError(e)); }
@@ -471,8 +478,12 @@ async function handleSeedTP(mode) {
     if (!ok) return;
   }
   try {
-    if (typeof seedTP !== "function") return showError("seedTP tidak tersedia.");
-    const r = await seedTP(mode);
+    let r;
+    if (typeof seedTP === "function") {
+      r = await seedTP(mode);
+    } else {
+      return showError("seedTP tidak tersedia.");
+    }
     await loadKurikulum();
     renderTabTP();
     const written = r
@@ -491,6 +502,8 @@ async function handleSeedTP(mode) {
 }
 
 (async function init() {
+  if (typeof requireAuth === "function") requireAuth();
+  if (typeof showUserEmail === "function") showUserEmail();
   await Promise.all([loadSiswa(), loadKurikulum()]);
   fillMapelSelect();
   const semSel = document.getElementById("sel-semester");
