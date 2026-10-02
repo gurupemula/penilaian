@@ -7,80 +7,55 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body class="login-page">
-  <div class="login-card">
-    <h1>Guru Pemula</h1>
-    <p class="subtitle">Masuk untuk mengakses aplikasi</p>
-
-    <div id="error-msg" class="error-msg"></div>
-
-    <form id="auth-form">
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="nama@email.com" required autocomplete="email" />
-      </div>
-
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" placeholder="Password" required minlength="6" autocomplete="current-password" />
-      </div>
-
-      <button type="submit" class="btn btn-primary" id="submit-btn">Masuk</button>
-    </form>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-mark">GP</div>
+      <h1>Guru Pemula</h1>
+      <p class="subtitle">Masuk untuk mengakses penilaian Kelas 5A</p>
+      <div id="error-msg" class="login-error"></div>
+      <form id="auth-form">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="nama@email.com" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Password" required minlength="6" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Masuk</button>
+      </form>
+    </div>
   </div>
-
-  <div class="loading-overlay" id="loading">
-    <div class="spinner"></div>
-  </div>
-
-  <!-- Firebase SDK -->
+  <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/auth.js"></script>
-
   <script>
-    // Redirect jika sudah login
     redirectIfLoggedIn();
-
     const form = document.getElementById("auth-form");
     const errorMsg = document.getElementById("error-msg");
     const loading = document.getElementById("loading");
-
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      errorMsg.classList.remove("show");
+      errorMsg.textContent = "";
       loading.classList.add("show");
-
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-
       try {
-        await auth.signInWithEmailAndPassword(email, password);
+        await auth.signInWithEmailAndPassword(
+          document.getElementById("email").value.trim(),
+          document.getElementById("password").value
+        );
         window.location.href = "dashboard.html";
       } catch (error) {
         loading.classList.remove("show");
         let message = "Terjadi kesalahan. Coba lagi.";
-
-        switch (error.code) {
-          case "auth/user-not-found":
-          case "auth/wrong-password":
-          case "auth/invalid-credential":
-            message = "Email atau password salah.";
-            break;
-          case "auth/invalid-email":
-            message = "Format email tidak valid.";
-            break;
-          case "auth/too-many-requests":
-            message = "Terlalu banyak percobaan. Coba lagi nanti.";
-            break;
-          case "auth/user-disabled":
-            message = "Akun ini dinonaktifkan.";
-            break;
-        }
-
+        if (["auth/user-not-found","auth/wrong-password","auth/invalid-credential"].includes(error.code))
+          message = "Email atau password salah.";
+        else if (error.code === "auth/invalid-email") message = "Format email tidak valid.";
+        else if (error.code === "auth/too-many-requests") message = "Terlalu banyak percobaan. Coba lagi nanti.";
+        else if (error.code === "auth/user-disabled") message = "Akun ini dinonaktifkan.";
         errorMsg.textContent = message;
-        errorMsg.classList.add("show");
       }
     });
   </script>

@@ -6,36 +6,132 @@
   <title>Dashboard - Guru Pemula</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
-  <nav class="navbar">
-    <div class="brand">Guru Pemula</div>
-    <div class="user-info">
-      <span id="user-email">...</span>
-      <button class="btn btn-secondary btn-sm" onclick="logout()">Keluar</button>
-    </div>
-  </nav>
-
-  <div class="container">
-    <h1 class="page-title">Dashboard</h1>
-    <p class="page-desc">Pilih fitur yang ingin digunakan.</p>
-
-    <div class="feature-grid">
-      <a href="penilaian.html" class="feature-card">
-        <div class="icon blue">📋</div>
-        <h3>Penilaian</h3>
-        <p>Input & kelola nilai siswa</p>
+<body class="dash-page">
+  <div class="dash-shell">
+    <!-- Sidebar ikon vertikal -->
+    <aside class="dash-rail">
+      <a href="dashboard.html" class="rail-logo" title="Guru Pemula">
+        <span class="rail-logo-mark">GP</span>
       </a>
-      <div class="feature-card disabled">
-        <div class="icon blue">📊</div>
-        <h3>Laporan</h3>
-        <p>Segera hadir</p>
+      <nav class="rail-nav">
+        <a href="dashboard.html" class="rail-btn active" title="Beranda">⌂</a>
+        <a href="penilaian.html" class="rail-btn" title="Penilaian">✎</a>
+        <a href="penilaian.html#rekap" class="rail-btn" title="Rekap">▦</a>
+        <a href="penilaian.html#siswa" class="rail-btn" title="Siswa">☰</a>
+        <a href="penilaian.html#tp" class="rail-btn" title="Kurikulum">☰</a>
+      </nav>
+      <div class="rail-foot">
+        <button type="button" class="rail-btn" onclick="logout()" title="Keluar">↪</button>
+        <div class="rail-avatar" id="user-avatar" title="Akun">G</div>
       </div>
-      <div class="feature-card disabled">
-        <div class="icon blue">👥</div>
-        <h3>Data Siswa</h3>
-        <p>Via tab di Penilaian</p>
-      </div>
-    </div>
+    </aside>
+
+    <!-- Konten utama -->
+    <main class="dash-main">
+      <header class="dash-header">
+        <div>
+          <h1 class="dash-hello">Hai, Guru</h1>
+          <p class="dash-sub">Kelola penilaian Kelas 5A dengan mudah</p>
+        </div>
+        <div class="dash-header-right">
+          <span class="dash-email" id="user-email">...</span>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="logout()">Keluar</button>
+        </div>
+      </header>
+
+      <!-- Hero kartu -->
+      <section class="hero-card">
+        <div class="hero-body">
+          <span class="hero-badge">KELAS 5A · 2025/2026</span>
+          <h2 class="hero-title">Penilaian Siswa</h2>
+          <p class="hero-desc">Input nilai, rekap TP, kelola siswa &amp; kurikulum dalam satu tempat.</p>
+          <div class="hero-meta">
+            <span class="hero-chip">Mapel &amp; TP</span>
+            <span class="hero-chip">25 siswa</span>
+            <span class="hero-chip">Semester 1–2</span>
+          </div>
+          <a href="penilaian.html" class="btn btn-hero">Mulai input nilai →</a>
+        </div>
+        <div class="hero-art" aria-hidden="true">✎</div>
+      </section>
+
+      <!-- Statistik -->
+      <section class="stat-grid">
+        <div class="stat-card stat-pink">
+          <div class="stat-num">4</div>
+          <div class="stat-label">Tab fitur</div>
+          <div class="stat-icon">✎</div>
+        </div>
+        <div class="stat-card stat-mint">
+          <div class="stat-num">25</div>
+          <div class="stat-label">Siswa Kelas 5A</div>
+          <div class="stat-icon">☰</div>
+        </div>
+        <div class="stat-card stat-lav">
+          <div class="stat-num">5+</div>
+          <div class="stat-label">Mata pelajaran</div>
+          <div class="stat-icon">▦</div>
+        </div>
+        <div class="stat-card stat-peach">
+          <div class="stat-num">S1</div>
+          <div class="stat-label">Semester aktif</div>
+          <div class="stat-icon">☰</div>
+        </div>
+      </section>
+
+      <!-- Fitur -->
+      <section class="section-block">
+        <div class="section-head">
+          <h3 class="section-title">Fitur tersedia</h3>
+        </div>
+        <div class="feature-row">
+          <a href="penilaian.html" class="feat-card">
+            <div class="feat-top">
+              <span class="feat-time">Input Nilai</span>
+              <span class="feat-avatars">0–100</span>
+            </div>
+            <h4 class="feat-name">Input &amp; simpan nilai</h4>
+            <div class="feat-tags">
+              <span class="tag tag-blue">MAPEL → TP → KOMPETENSI</span>
+            </div>
+            <span class="feat-go">→</span>
+          </a>
+          <a href="penilaian.html" class="feat-card" onclick="sessionStorage.setItem('gp-tab','rekap')">
+            <div class="feat-top">
+              <span class="feat-time">Rekap</span>
+              <span class="feat-avatars">CSV</span>
+            </div>
+            <h4 class="feat-name">Rekap nilai per TP</h4>
+            <div class="feat-tags">
+              <span class="tag tag-green">MATRIKS SISWA × TP</span>
+            </div>
+            <span class="feat-go">→</span>
+          </a>
+          <a href="penilaian.html" class="feat-card" onclick="sessionStorage.setItem('gp-tab','siswa')">
+            <div class="feat-top">
+              <span class="feat-time">Siswa</span>
+              <span class="feat-avatars">5A</span>
+            </div>
+            <h4 class="feat-name">Data siswa Kelas 5A</h4>
+            <div class="feat-tags">
+              <span class="tag tag-orange">EDIT · SEED FIRESTORE</span>
+            </div>
+            <span class="feat-go">→</span>
+          </a>
+          <a href="penilaian.html" class="feat-card" onclick="sessionStorage.setItem('gp-tab','tp')">
+            <div class="feat-top">
+              <span class="feat-time">Kurikulum</span>
+              <span class="feat-avatars">TP</span>
+            </div>
+            <h4 class="feat-name">TP &amp; kompetensi</h4>
+            <div class="feat-tags">
+              <span class="tag tag-purple">BOBOT S1 / S2</span>
+            </div>
+            <span class="feat-go">→</span>
+          </a>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -46,6 +142,17 @@
   <script>
     requireAuth();
     showUserEmail();
+    auth.onAuthStateChanged((user) => {
+      if (!user) return;
+      const name = (user.email || "G").charAt(0).toUpperCase();
+      const av = document.getElementById("user-avatar");
+      if (av) av.textContent = name;
+      const hello = document.querySelector(".dash-hello");
+      if (hello && user.email) {
+        const short = user.email.split("@")[0];
+        hello.textContent = "Hai, " + short;
+      }
+    });
   </script>
 </body>
 </html>

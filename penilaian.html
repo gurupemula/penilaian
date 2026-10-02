@@ -9,12 +9,23 @@
 <body class="app-body">
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand"><a href="dashboard.html">Guru Pemula</a></div>
+      <a href="dashboard.html" class="sidebar-brand">
+        <span class="brand-mark">GP</span>
+        <span class="brand-text">Guru Pemula</span>
+      </a>
       <nav class="sidebar-nav">
-        <button type="button" class="nav-item active" data-tab="input"><span class="nav-ico">✎</span> Input Nilai</button>
-        <button type="button" class="nav-item" data-tab="rekap"><span class="nav-ico">▦</span> Rekap</button>
-        <button type="button" class="nav-item" data-tab="siswa"><span class="nav-ico">☰</span> Siswa</button>
-        <button type="button" class="nav-item" data-tab="tp"><span class="nav-ico">☰</span> Kurikulum</button>
+        <button type="button" class="nav-item active" data-tab="input">
+          <span class="nav-ico">✎</span> Input Nilai
+        </button>
+        <button type="button" class="nav-item" data-tab="rekap">
+          <span class="nav-ico">▦</span> Rekap
+        </button>
+        <button type="button" class="nav-item" data-tab="siswa">
+          <span class="nav-ico">☰</span> Siswa
+        </button>
+        <button type="button" class="nav-item" data-tab="tp">
+          <span class="nav-ico">☰</span> Kurikulum
+        </button>
       </nav>
       <div class="sidebar-foot">
         <a href="dashboard.html" class="nav-item link">← Dashboard</a>
@@ -57,7 +68,7 @@
               <select id="sel-kompetensi" disabled><option value="">—</option></select>
             </div>
           </div>
-          <p class="hint" id="semester-hint" style="margin:-.35rem 0 .75rem">TP difilter menurut bobot S1/S2 di Kurikulum (bobot 0 = tidak dipakai semester itu).</p>
+          <p class="hint" id="semester-hint">TP difilter menurut bobot S1/S2 di Kurikulum (bobot 0 = tidak dipakai semester itu).</p>
 
           <div id="input-workspace" class="hidden">
             <div class="toolbar-row">
@@ -71,7 +82,7 @@
               </div>
               <button type="button" class="btn btn-primary" id="btn-simpan">Simpan nilai</button>
             </div>
-            <p class="hint" id="nilai-session-info" style="margin:.25rem 0 .75rem"></p>
+            <p class="hint" id="nilai-session-info"></p>
             <div class="table-scroll">
               <table class="sheet">
                 <thead>
@@ -100,7 +111,6 @@
 
   <div class="loading-overlay" id="loading"><div class="spinner"></div></div>
 
-  <!-- defer: unduh paralel, eksekusi berurutan setelah HTML siap -->
   <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -113,5 +123,15 @@
   <script defer src="js/penilaian-rekap.js"></script>
   <script defer src="js/penilaian-tp-tab.js"></script>
   <script defer src="js/penilaian-ui.js"></script>
+  <script>
+    // Buka tab dari dashboard (sessionStorage)
+    document.addEventListener("DOMContentLoaded", () => {
+      const t = sessionStorage.getItem("gp-tab");
+      if (t && typeof switchTab === "function") {
+        sessionStorage.removeItem("gp-tab");
+        setTimeout(() => switchTab(t), 200);
+      }
+    });
+  </script>
 </body>
 </html>
