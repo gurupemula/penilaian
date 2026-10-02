@@ -1,8 +1,7 @@
 /**
- * auth.js - Helper authentication untuk semua halaman
+ * auth.js — helper authentication untuk semua halaman
  */
 
-// Cek status login dan redirect jika perlu
 function requireAuth(redirectTo = "index.html") {
   return new Promise((resolve) => {
     auth.onAuthStateChanged((user) => {
@@ -15,7 +14,6 @@ function requireAuth(redirectTo = "index.html") {
   });
 }
 
-// Jika sudah login, jangan biarkan di halaman login
 function redirectIfLoggedIn(redirectTo = "dashboard.html") {
   auth.onAuthStateChanged((user) => {
     if (user) {
@@ -24,7 +22,6 @@ function redirectIfLoggedIn(redirectTo = "dashboard.html") {
   });
 }
 
-// Logout
 function logout() {
   auth.signOut()
     .then(() => {
@@ -36,7 +33,6 @@ function logout() {
     });
 }
 
-// Tampilkan email user di navbar
 function showUserEmail(elementId = "user-email") {
   auth.onAuthStateChanged((user) => {
     if (user) {

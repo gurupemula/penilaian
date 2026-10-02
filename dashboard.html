@@ -6,12 +6,12 @@
   <title>Dashboard - Guru Pemula</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body class="dashboard-body">
   <nav class="navbar">
     <div class="brand">Guru Pemula</div>
     <div class="user-info">
       <span id="user-email">...</span>
-      <button class="btn btn-secondary btn-sm" onclick="logout()">Keluar</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="logout()">Keluar</button>
     </div>
   </nav>
 
@@ -21,18 +21,18 @@
 
     <div class="feature-grid">
       <a href="penilaian.html" class="feature-card">
-        <div class="icon blue">📋</div>
+        <div class="icon blue">✎</div>
         <h3>Penilaian</h3>
-        <p>Input & kelola nilai siswa</p>
+        <p>Input nilai, rekap, siswa &amp; kurikulum Kelas 5A</p>
       </a>
       <div class="feature-card disabled">
-        <div class="icon blue">📊</div>
+        <div class="icon muted">▦</div>
         <h3>Laporan</h3>
         <p>Segera hadir</p>
       </div>
       <div class="feature-card disabled">
-        <div class="icon blue">👥</div>
-        <h3>Data Siswa</h3>
+        <div class="icon muted">☰</div>
+        <h3>Pengaturan</h3>
         <p>Via tab di Penilaian</p>
       </div>
     </div>
