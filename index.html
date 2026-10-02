@@ -11,7 +11,7 @@
     <h1>Guru Pemula</h1>
     <p class="subtitle">Masuk untuk mengakses aplikasi</p>
 
-    <div id="error-msg" class="error-msg"></div>
+    <div id="error-msg" class="login-error"></div>
 
     <form id="auth-form">
       <div class="form-group">
@@ -32,7 +32,6 @@
     <div class="spinner"></div>
   </div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -40,7 +39,6 @@
   <script src="js/auth.js"></script>
 
   <script>
-    // Redirect jika sudah login
     redirectIfLoggedIn();
 
     const form = document.getElementById("auth-form");
@@ -49,7 +47,7 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      errorMsg.classList.remove("show");
+      errorMsg.textContent = "";
       loading.classList.add("show");
 
       const email = document.getElementById("email").value.trim();
@@ -80,7 +78,6 @@
         }
 
         errorMsg.textContent = message;
-        errorMsg.classList.add("show");
       }
     });
   </script>
