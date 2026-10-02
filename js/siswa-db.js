@@ -71,7 +71,6 @@ async function seedSiswaToFirestore(siswaList, options = {}) {
   let written = 0;
   let skipped = 0;
 
-  // Firestore batch max 500; 25 siswa aman di satu batch
   const batch = db.batch();
 
   for (const s of siswaList) {

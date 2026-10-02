@@ -1,7 +1,16 @@
 # Changelog
 
+## [0.7.0] - 2026-10-02
+
+### UI paket lengkap
+- **Login** (`index.html`) — form email/password, error handling, redirect jika sudah login
+- **Dashboard** — navbar + feature cards (Penilaian aktif)
+- **CSS** — `dashboard-extras.css` untuk login form groups & dashboard grid
+- **auth.js**, **firebase-config.js**, **siswa-db.js** diperbarui/ditambahkan
+- **firestore.rules** diselaraskan dengan model data
+
 ## [Unreleased]
-- Simpan nilai ke Firestore, matrix Rekap
+- Simpan nilai ke Firestore, matrix Rekap (sudah di kode)
 
 ## [0.6.0] - 2026-09-27
 
